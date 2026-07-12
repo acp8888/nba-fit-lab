@@ -1,7 +1,7 @@
 .PHONY: ingest transform lab
 
 ingest:
-	echo "ingesting..."
+	uv run nba-fit-ingest bbref data/local/raw/bbref/2026-07-12/*.csv
 
 transform:
 	echo "transforming..."

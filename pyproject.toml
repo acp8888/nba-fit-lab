@@ -31,3 +31,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/nba_fit"]
+
+[project.scripts]
+nba-fit-ingest = "nba_fit.cli:main"
