@@ -7,7 +7,7 @@ ingest:
 	uv run nba-fit-ingest pbpstats data/local/raw/pbpstats/2026-07-08/*.csv
 
 transform:
-	echo "transforming..."
+	uv run python transform/run.py
 
 lab:
 	echo "doing lab stuff..."
