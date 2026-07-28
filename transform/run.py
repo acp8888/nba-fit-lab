@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from transform.duckdb_session import connect
 
 TRANSFORM_DIR = Path(__file__).parent
+MARTS_S3 = "s3://nba-fit-lab/marts"
 ASSERT_RE = re.compile(r"--\s*ASSERT\s*(==|!=|>=|<=|>|<)?\s*(-?\d+)\s*:\s*(.+)")
 OPS = {
     "==": operator.eq,
@@ -71,6 +72,41 @@ def run_assertions(con, view: str, assert_lines: list[str]) -> list[str]:
     return failures
 
 
+def write_mart(con, view: str) -> None:
+    """Write a mart view to S3 as Parquet, one file per season partition.
+
+    We deliberately avoid DuckDB's PARTITION_BY + OVERWRITE, which issues an
+    s3:DeleteObject to clear the target — the ingest IAM role is put-only by
+    design (raw layer is append-only). Instead we write each season to a fixed
+    key `season=<s>/data.parquet`; re-running PUT-overwrites that same key in
+    place, so re-runs stay deterministic without needing delete permission.
+    The season column is dropped from the file and encoded in the path (hive
+    layout), so `read_parquet(.../**/*.parquet)` recovers it. Note: a season
+    that disappears between runs leaves a stale partition (we can't delete);
+    seasons are only ever added here, so that doesn't arise.
+
+    Only called for marts whose assertions pass.
+    """
+    seasons = [
+        r[0]
+        for r in con.execute(
+            f"SELECT DISTINCT season FROM {view} ORDER BY season"
+        ).fetchall()
+    ]
+    for s in seasons:
+        # Fixed filename so each run PUT-overwrites the same key in place. Matches
+        # DuckDB's default `data_0.parquet` so it also reclaims any file left by
+        # an earlier PARTITION_BY write (which we can't delete under put-only).
+        key = f"{MARTS_S3}/{view}/season={s}/data_0.parquet"
+        con.execute(
+            f"COPY (SELECT * EXCLUDE (season) FROM {view} WHERE season = {s}) "
+            f"TO '{key}' (FORMAT PARQUET)"
+        )
+    print(
+        f"     -> wrote {view} to {MARTS_S3}/{view} ({len(seasons)} season partition(s))"
+    )
+
+
 def main() -> None:
     con = connect()
     sql_files = sorted(TRANSFORM_DIR.glob("[0-9]*.sql"))
@@ -85,8 +121,14 @@ def main() -> None:
         body, assert_lines = split_file(f.read_text())
         con.execute(f"CREATE OR REPLACE VIEW {view} AS {body}")
         n = con.execute(f"SELECT count(*) FROM {view}").fetchone()[0]
-        print(f"  {view}: {n} rows")
-        all_failures.extend(run_assertions(con, view, assert_lines))
+        kind = "mart" if view.startswith("mart_") else "view"
+        print(f"  {view}: {n} rows ({kind})")
+        failures = run_assertions(con, view, assert_lines)
+        all_failures.extend(failures)
+        # Staging models stay as in-session views; marts are the published
+        # contract, so persist them to S3 — but only if their assertions pass.
+        if view.startswith("mart_") and not failures:
+            write_mart(con, view)
 
     if all_failures:
         print(f"\n{len(all_failures)} assertion(s) FAILED:")

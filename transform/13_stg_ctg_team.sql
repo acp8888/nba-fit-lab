@@ -130,16 +130,16 @@ select
     cast(replace(sacc_def."OppCornerThree", '%', '') as double) as def_acc_corner_three,
     cast(replace(sacc_def."OppNonCorner",   '%', '') as double) as def_acc_non_corner_three,
 
-    -- context: offense transition
-    ctx_off_trans."AllTrans_Freq"                                   as off_trans_freq,
+    -- context: offense transition ("%"-suffixed freq -> double)
+    cast(replace(ctx_off_trans."AllTrans_Freq", '%', '') as double)  as off_trans_freq,
     ctx_off_trans."AllTrans_PtsPlay"                                as off_trans_pts_per_play,
     ctx_off_trans."PtsPoss"                                         as off_total_pts_poss,
 
     -- context: offense halfcourt
     ctx_off_hc."HC_PtsPlay"                                         as off_hc_pts_per_play,
 
-    -- context: defense transition
-    ctx_def_trans."AllTrans_OppFreq"                                as def_trans_freq,
+    -- context: defense transition ("%"-suffixed freq -> double)
+    cast(replace(ctx_def_trans."AllTrans_OppFreq", '%', '') as double) as def_trans_freq,
     ctx_def_trans."AllTrans_OppPtsPlay"                             as def_trans_pts_per_play,
 
     -- context: defense halfcourt
