@@ -1,4 +1,4 @@
-.PHONY: ingest transform lab
+.PHONY: ingest transform lab tour
 
 ingest:
 	uv run nba-fit-ingest bbref data/local/raw/bbref/2026-07-08/*.csv
@@ -10,4 +10,7 @@ transform:
 	uv run python transform/run.py
 
 lab:
-	echo "doing lab stuff..."
+	uv run marimo edit notebooks/10_lineup_explorer.py
+
+tour:
+	uv run marimo edit notebooks/00_tour.py
