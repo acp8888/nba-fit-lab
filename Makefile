@@ -1,4 +1,4 @@
-.PHONY: ingest transform lab tour
+.PHONY: ingest transform lab tour a2
 
 ingest:
 	uv run nba-fit-ingest bbref data/local/raw/bbref/2026-07-08/*.csv
@@ -14,3 +14,6 @@ lab:
 
 tour:
 	uv run marimo edit notebooks/00_tour.py
+
+a2:
+	uv run marimo edit notebooks/20_a2_scarcity.py
