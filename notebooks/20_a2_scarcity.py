@@ -39,14 +39,24 @@ def _(mo):
 
 @app.cell
 def _(league, min_min, np, pd, sm):
-    # fully-covered lineups, above the minutes filter
-    d = league[(league["n_covered"] == 5) & (league["minutes"] >= min_min.value)].copy()
+    feats = [
+        "talent_sum_dpm",
+        "rim_max_blk",
+        "spacing_gravity_mean",
+        "usg_spread",
+        "ast_max",
+    ]
+    # fully-covered lineups, above the minutes filter, with all features present
+    d = (
+        league[(league["n_covered"] == 5) & (league["minutes"] >= min_min.value)]
+        .dropna(subset=feats)
+        .copy()
+    )
 
-    feats = ["talent_sum_dpm", "rim_max_blk", "spacing_min", "usg_spread", "ast_max"]
     nice = {
         "talent_sum_dpm": "talent (ΣDPM)",
         "rim_max_blk": "rim protection (max BLK%)",
-        "spacing_min": "spacing (weakest 3PA rate)",
+        "spacing_gravity_mean": "spacing (gravity: willingness×accuracy)",
         "usg_spread": "usage balance (spread)",
         "ast_max": "playmaking (top AST%)",
     }
@@ -153,9 +163,12 @@ def _(mo, r2_full, r2_talent, rim_swing):
           than his individual value. Going from a weak (p25) to a strong (p90)
           shot-blocker is worth **{rim_swing:+.1f} net/100**.
         - **Spacing, usage balance, and playmaking do not show a robust
-          independent effect** here — notably counter to the "spacing is
-          everything" narrative. (Caveat: spacing is proxied by 3PA *rate* only;
-          a willingness×accuracy version is the next refinement.)
+          independent effect** — notably counter to the "spacing is everything"
+          narrative. And spacing gets a *fair* test here: it's 3-point **gravity**
+          (willingness × accuracy from CTG), not just attempt rate, and it still
+          sits flat on zero. If anything the weakest-spacer version is slightly
+          negative — a hint that going small for spacing costs the rim protection
+          that actually helps.
         """
     )
     return

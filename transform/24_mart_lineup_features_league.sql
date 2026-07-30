@@ -19,8 +19,9 @@
 -- Each source lineup keeps its own row (lineup_id) so distinct lineups that
 -- collapse to the same ambiguous key are not merged.
 --
--- NOTE: spacing here is 3PA-rate only (willingness, not accuracy) — a first cut.
--- A willingness x accuracy version is a planned refinement.
+-- Spacing comes in two forms: spacing_mean/min from 3PA rate (willingness only,
+-- BBref/public), and spacing_gravity_mean/min = willingness x accuracy from CTG
+-- (stg_ctg_gravity_league). The gravity version is the fair test of spacing.
 
 with adv as (
     select
@@ -51,11 +52,13 @@ attr as (
         adv.ast_pct,
         adv.blk_pct,
         adv.three_pa_rate                         as par,
-        ht.height_in
+        ht.height_in,
+        g.gravity
     from adv
     join stg_team_map tm on adv.team_bbref = tm.bbref_abbr
     left join dk on dk.fold = adv.fold and dk.team = tm.full_name
     left join ht on ht.fold = adv.fold and ht.team_bbref = adv.team_bbref
+    left join stg_ctg_gravity_league g on regexp_replace(lower(strip_accents(g.player_name)), '\s+(jr\.?|sr\.?|ii|iii|iv)$', '') = adv.fold
     qualify row_number() over (partition by adv.team_bbref, adv.flast order by adv.mp desc) = 1
 ),
 
@@ -87,6 +90,9 @@ select
     -- continuous fit features (over covered players)
     avg(a.par)                                    as spacing_mean,
     min(a.par)                                    as spacing_min,
+    -- spacing as willingness x accuracy (3pt gravity); the fair-shot version
+    avg(a.gravity)                                as spacing_gravity_mean,
+    min(a.gravity)                                as spacing_gravity_min,
     max(a.blk_pct)                                as rim_max_blk,
     max(a.height_in)                              as tallest_in,
     max(a.usg)                                    as usg_max,
