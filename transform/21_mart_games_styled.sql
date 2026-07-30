@@ -26,6 +26,10 @@ select
     g.net_rtg,
     g.pace,
 
+    -- our shot mix / efficiency this game (for A3 process-adaptation analysis)
+    g.three_pa_rate,
+    g.off_efg_pct,
+
     -- rolling form: mean net rating over this + prior 9 games (window drill)
     avg(g.net_rtg) over (
         partition by g.team
@@ -42,7 +46,9 @@ select
     s.off_transition_rate                     as opp_off_transition_rate,
     s.def_efg_pct                             as opp_def_efg_pct,
     s.def_tov_forced_pct                      as opp_def_tov_forced_pct,
-    s.def_rim_rate_allowed                    as opp_def_rim_rate_allowed
+    s.def_rim_rate_allowed                    as opp_def_rim_rate_allowed,
+    s.def_three_pa_rate_allowed               as opp_def_three_pa_rate_allowed,
+    s.pace                                    as opp_pace
 
 from stg_games g
 join stg_team_map tm    on g.opponent = tm.bbref_abbr
