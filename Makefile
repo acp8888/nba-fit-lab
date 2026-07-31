@@ -1,4 +1,4 @@
-.PHONY: ingest transform lab tour a2 a3
+.PHONY: ingest transform lab tour a2 a3 a4
 
 ingest:
 	uv run nba-fit-ingest bbref data/local/raw/bbref/2026-07-08/*.csv
@@ -20,3 +20,6 @@ a2:
 
 a3:
 	uv run marimo edit notebooks/30_a3_opponents.py
+
+a4:
+	uv run marimo edit notebooks/40_a4_projection.py
