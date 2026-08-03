@@ -6,37 +6,36 @@ app = marimo.App(width="medium")
 
 @app.cell
 def _(mo):
-    mo.md(
-        """
-        # From raw exports to conclusions — a data walkthrough
+    mo.md("""
+    # From raw exports to conclusions — a data walkthrough
 
-        This notebook traces the whole pipeline behind A2–A4: the four raw data
-        sources, how they're cleaned into **staging** views, how those become the
-        **marts** the analyses read, and exactly how each mart turns into a finding.
-        Every step shows the real data.
+    This notebook traces the whole pipeline behind A2–A4: the four raw data
+    sources, how they're cleaned into **staging** views, how those become the
+    **marts** the analyses read, and exactly how each mart turns into a finding.
+    Every step shows the real data.
 
-        > **Note:** the analysis notebooks read *only* the published marts. This one
-        > deliberately breaks that rule — to explain the layers, it queries the raw
-        > files and staging views directly (via `_lab.q(...)`).
+    > **Note:** the analysis notebooks read *only* the published marts. This one
+    > deliberately breaks that rule — to explain the layers, it queries the raw
+    > files and staging views directly (via `_lab.q(...)`).
 
-        **The layers** (each numbered `transform/NN_*.sql` file is one view;
-        `make transform` builds them in order and fails on any assertion):
+    **The layers** (each numbered `transform/NN_*.sql` file is one view;
+    `make transform` builds them in order and fails on any assertion):
 
-        ```
-        raw exports (S3)      →   staging (stg_*)        →   marts (mart_*)      →   analysis
-        BBref / PBPStats /        parse, type, clean,        join, engineer,        regressions,
-        DARKO / CleanTheGlass     one file per table         one row per unit       clustering, sims
-        ```
-        """
-    )
+    ```
+    raw exports (S3)      →   staging (stg_*)        →   marts (mart_*)      →   analysis
+    BBref / PBPStats /        parse, type, clean,        join, engineer,        regressions,
+    DARKO / CleanTheGlass     one file per table         one row per unit       clustering, sims
+    ```
+    """)
     return
 
 
 @app.cell
 def _(mo):
-    mo.md(
-        "## Explore any table\nPick a staging or mart view to see its size, schema, and first rows."
-    )
+    mo.md("""
+    ## Explore any table
+    Pick a staging or mart view to see its size, schema, and first rows.
+    """)
     return
 
 
@@ -64,15 +63,13 @@ def _(mo, q, tbl):
 
 @app.cell
 def _(mo):
-    mo.md(
-        """
-        ---
-        ## 1 · The four raw sources
+    mo.md("""
+    ---
+    ## 1 · The four raw sources
 
-        Each answers a different question. They arrive as CSVs exported by hand
-        (idempotent `make ingest` uploads them to `s3://nba-fit-lab/raw/…`).
-        """
-    )
+    Each answers a different question. They arrive as CSVs exported by hand
+    (idempotent `make ingest` uploads them to `s3://nba-fit-lab/raw/…`).
+    """)
     return
 
 
@@ -115,20 +112,18 @@ def _(RAW, mo, q):
 
 @app.cell
 def _(mo):
-    mo.md(
-        """
-        ---
-        ## 2 · Staging — turning exports into clean tables
+    mo.md("""
+    ---
+    ## 2 · Staging — turning exports into clean tables
 
-        Staging is *faithful cleanup*: parse, type, and validate, one `.sql` file
-        per table, with assertions that fail the build on bad data. No opinions yet.
+    Staging is *faithful cleanup*: parse, type, and validate, one `.sql` file
+    per table, with assertions that fail the build on bad data. No opinions yet.
 
-        Watch one row of the BBref lineup export become a typed staging row. The raw
-        `Lineup` is a `" | "`-joined string and `MP` is `"mm:ss"`; staging splits the
-        five players, builds a sorted key, converts minutes, and strips the `+` off
-        the signed net rating.
-        """
-    )
+    Watch one row of the BBref lineup export become a typed staging row. The raw
+    `Lineup` is a `" | "`-joined string and `MP` is `"mm:ss"`; staging splits the
+    five players, builds a sorted key, converts minutes, and strips the `+` off
+    the signed net rating.
+    """)
     return
 
 
@@ -154,21 +149,19 @@ def _(RAW, mo, q):
 
 @app.cell
 def _(mo):
-    mo.md(
-        """
-        ---
-        ## 3 · The identity problem — matching players across sources
+    mo.md("""
+    ---
+    ## 3 · The identity problem — matching players across sources
 
-        Nothing shares a key. A lineup names players `"F. Last"` (`P. Banchero`);
-        DARKO, heights, and advanced use full names; CTG has its own spellings. To
-        put a player's DPM and BLK% onto a lineup, we normalize both sides to one
-        key: first-initial + last name, accent-folded, suffix-stripped
-        (`Wendell Carter Jr.` → `w. carter`).
+    Nothing shares a key. A lineup names players `"F. Last"` (`P. Banchero`);
+    DARKO, heights, and advanced use full names; CTG has its own spellings. To
+    put a player's DPM and BLK% onto a lineup, we normalize both sides to one
+    key: first-initial + last name, accent-folded, suffix-stripped
+    (`Wendell Carter Jr.` → `w. carter`).
 
-        It mostly works — **99.8% of lineup slots resolve**. But `"F. Last"` is
-        genuinely ambiguous when a team has two:
-        """
-    )
+    It mostly works — **99.8% of lineup slots resolve**. But `"F. Last"` is
+    genuinely ambiguous when a team has two:
+    """)
     return
 
 
@@ -194,25 +187,23 @@ def _(mo, q):
 
 @app.cell
 def _(mo):
-    mo.md(
-        """
-        ---
-        ## 4 · Marts — the analysis contract
+    mo.md("""
+    ---
+    ## 4 · Marts — the analysis contract
 
-        Marts join staging into one row per unit of analysis, and add engineered
-        columns (opinions). The workhorse is **`mart_lineup_features_league`**: one
-        row per BBref 5-man lineup (600, all teams), with the outcome, a talent
-        baseline, and continuous fit features.
+    Marts join staging into one row per unit of analysis, and add engineered
+    columns (opinions). The workhorse is **`mart_lineup_features_league`**: one
+    row per BBref 5-man lineup (600, all teams), with the outcome, a talent
+    baseline, and continuous fit features.
 
-        The key engineered idea — **fit = performance beyond talent**:
+    The key engineered idea — **fit = performance beyond talent**:
 
-        > `fit_residual  =  net_pts_per100  −  talent_sum_dpm`
+    > `fit_residual  =  net_pts_per100  −  talent_sum_dpm`
 
-        where `talent_sum_dpm` = 5 × the lineup's minutes-weighted mean DPM. A
-        positive residual means the lineup outplayed what its five players' individual
-        value predicts.
-        """
-    )
+    where `talent_sum_dpm` = 5 × the lineup's minutes-weighted mean DPM. A
+    positive residual means the lineup outplayed what its five players' individual
+    value predicts.
+    """)
     return
 
 
@@ -239,15 +230,36 @@ def _(mo, q):
 
 @app.cell
 def _(mo):
-    mo.md(
-        """
-        ---
-        ## 5 · A2 — how much is fit worth, on top of talent?
+    mo.md("""
+    ### Field by field — `mart_lineup_features_league`
 
-        **Step 1 — is the talent baseline any good?** Correlate `talent_sum_dpm`
-        with actual `net_pts_per100` across the 595 fully-covered lineups.
-        """
-    )
+    | field | what it is | how to read it | where it's silent |
+    |---|---|---|---|
+    | `net_pts_per100` | the **outcome**: points the lineup outscored opponents by per 100 possessions, on court | +5 good, −5 bad; ±10 is extreme | opponent-*averaged*, not adjusted; not garbage-time filtered |
+    | `talent_sum_dpm` | **talent baseline**: sum of the five players' DARKO DPM (each player's standalone per-100 impact) | the net rating the *sum of the parts* predicts | assumes talent is additive — ignores diminishing returns |
+    | `fit_residual` | `net − talent`: how far the group beat or missed its talent | +6 = played 6 better than the parts suggest | = real fit **+** DPM's own error **+** small-sample noise |
+    | `minutes` | on-court time; also the regression **weight** | bigger row = more trustworthy | each team's ~top-20 lineups only |
+    | `n_covered` | how many of the 5 slots matched a rostered player (0–5) | we analyze only `n_covered = 5` | ~9 deep-bench players league-wide have no profile |
+    | `rim_max_blk` | **rim protection**: highest block rate (BLK%) among the five | a rim-protecting big pushes it up | BLK% is a proxy — misses verticality/positioning/deterrence-without-blocks |
+    | `spacing_gravity_mean` | **spacing**: mean of players' 3PA-frequency × 3P-accuracy (willingness × ability) | how much the floor is stretched | doesn't capture off-ball movement / gravity |
+    | `usg_spread`, `usg_max` | **shot-creation**: spread of usage rates, and the top usage | high = one dominant creator | usage ≠ creation *quality* |
+    | `ast_max` | **playmaking**: the lineup's best assist rate | a primary passer raises it | AST% misses hockey assists / gravity passes |
+    | `tallest_in` | **size**: tallest player, in inches | 84 = 7'0" | one player, not the lineup's overall size |
+
+    **The gaps in one place:** the outcome is opponent-*averaged* (A3 will show that's mild — opponent style barely moves margin), it's each team's ~top-20 lineups over *one* season, and every fit feature is a *proxy* built from box-score-ish rates. Good enough to rank lineups; not to settle an argument. That honesty is why the analysis leans on intervals, not point estimates.
+    """)
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ---
+    ## 5 · A2 — how much is fit worth, on top of talent?
+
+    **Step 1 — is the talent baseline any good?** Correlate `talent_sum_dpm`
+    with actual `net_pts_per100` across the 595 fully-covered lineups.
+    """)
     return
 
 
@@ -268,14 +280,12 @@ def _(load_mart, mo, np):
 
 @app.cell
 def _(mo):
-    mo.md(
-        """
-        **Step 2 — the regression.** Minutes-weighted least squares of net rating on
-        talent + four continuous fit features, standardized so the coefficients are
-        comparable (per +1 SD), with standard errors **clustered by team** (600
-        lineups come from only 30 teams — they aren't independent).
-        """
-    )
+    mo.md("""
+    **Step 2 — the regression.** Minutes-weighted least squares of net rating on
+    talent + four continuous fit features, standardized so the coefficients are
+    comparable (per +1 SD), with standard errors **clustered by team** (600
+    lineups come from only 30 teams — they aren't independent).
+    """)
     return
 
 
@@ -336,22 +346,43 @@ def _(d, mo, pd, sm):
 
 @app.cell
 def _(mo):
-    mo.md(
-        """
-        ---
-        ## 6 · A3 — does opponent style matter?
+    mo.md("""
+    ### How to read that regression table
 
-        **Step 1 — do teams even cluster into archetypes?** Standardize
-        `mart_team_style` and run k-means for several k, scoring each by *silhouette*
-        (separation) and *stability* (agreement across random seeds).
-        """
-    )
+    - **coef (per SD)** — the features live on different scales (BLK% ~1–8, gravity ~5–20), so each is *standardized* to mean 0, SD 1 first. The coefficient then reads: *"points of net rating per **one standard deviation** more of this feature, holding the others fixed"* — directly comparable across rows. Rim protection's ≈ +1.4 means a typical bump in rim protection buys ~1.4 net/100.
+    - **95% CI** — the plausible range for the coefficient. If it **includes 0**, we can't distinguish the effect from noise. Only rim protection's interval sits entirely above zero.
+    - **p** — the chance of seeing an effect this big if the truth were zero; < 0.05 is the usual "real" bar.
+    - **clustered by team** — 600 lineups but only 30 teams, and lineups from one team share its coaching, health, and system, so they aren't independent observations. Clustering widens the intervals *honestly* — naïve standard errors would overstate our certainty roughly 4×.
+    - **R² (17% → 19%)** — the share of net-rating *variance* the model explains. Talent alone gets ~17%; adding every fit feature reaches ~19%. That **+2% is the ceiling** on how much fit can possibly matter here.
+
+    **Where it's silent:** this describes *associations*, not causes — teams that build rim protection also tend to defend and coach well, and we can't fully peel those apart. And "spacing doesn't clear zero" means *undetectable at this sample*, not *proven to be zero*.
+    """)
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ---
+    ## 6 · A3 — does opponent style matter?
+
+    **Step 1 — do teams even cluster into archetypes?** Standardize
+    `mart_team_style` and run k-means for several k, scoring each by *silhouette*
+    (separation) and *stability* (agreement across random seeds).
+    """)
     return
 
 
 @app.cell
 def _(
-    KMeans, StandardScaler, adjusted_rand_score, load_mart, mo, np, pd, silhouette_score
+    KMeans,
+    StandardScaler,
+    adjusted_rand_score,
+    load_mart,
+    mo,
+    np,
+    pd,
+    silhouette_score,
 ):
     ts = load_mart("mart_team_style")
     sf = [
@@ -393,13 +424,24 @@ def _(
 
 @app.cell
 def _(mo):
-    mo.md(
-        """
-        **Step 2 — process vs outcome.** Regress our per-game numbers on the
-        opponent's *quality* (their season net rating) plus their *style*. Style
-        moves how we play; it doesn't move the result.
-        """
-    )
+    mo.md("""
+    ### What those two scores mean
+
+    - **silhouette** — for each team, how much closer it sits to its *own* cluster than to the nearest *other* cluster, averaged over all teams. Runs −1 to +1: **> 0.5** strong, **0.25–0.5** reasonable, **< 0.25** the clusters overlap so much they're barely real. We top out at ~0.12.
+    - **seed stability (ARI)** — k-means starts from random seeds; ARI measures how much two runs *agree* on who's grouped with whom (1 = identical, 0 = coin-flip). Ours ~0.4 means re-running literally reshuffles teams between "archetypes."
+
+    Together they say the archetypes are a **story we impose**, not structure in the data — team style is a smooth spectrum (a little faster, a little more rim-heavy). So rather than force 30 teams into 5 boxes, A3 keeps opponent style as **continuous numbers** and asks what they actually move. This is the same instinct as A2 dropping binary "shooter" flags for continuous gravity: *don't bucket a spectrum.*
+    """)
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    **Step 2 — process vs outcome.** Regress our per-game numbers on the
+    opponent's *quality* (their season net rating) plus their *style*. Style
+    moves how we play; it doesn't move the result.
+    """)
     return
 
 
@@ -474,17 +516,40 @@ def _(load_mart, mo, pd, sm):
 
 @app.cell
 def _(mo):
-    mo.md(
-        """
-        ---
-        ## 7 · A4 — from a roster to a distribution of wins
+    mo.md("""
+    ### Why "process vs outcome" is the whole point
 
-        **The engine, in one line:** team net rating = `5 × minutes-weighted mean
-        player DPM`; then Pythagorean wins from that net rating. The full roster is
-        required — the deep bench is exactly what drags a bad team. Check calibration
-        against what actually happened:
-        """
-    )
+    Each row regresses one of *our* per-game numbers on the opponent's traits, HC-robust
+    (standard errors that tolerate games being unequally noisy). The tell is that the
+    **3rd and 5th rows use the same opponent trait** — "opponent allows threes":
+
+    - it → **our 3PA rate rises** (a *process* we can measure, p < 0.001)
+    - it → **our margin doesn't budge** (the *outcome*, not significant)
+
+    So opponent style is real and legible — it visibly bends how we play — but it
+    **doesn't reach the scoreboard** once you know how *good* the opponent is
+    (`opp_net_pts_poss`, their season net rating) and where the game is played
+    (`home`, worth ~+4 points). *Style is preparation, not prediction.*
+
+    **Where it's silent:** margin is opponent-averaged at the *team* level and we can't
+    see individual *matchups* (who guarded whom). A genuine scheme edge in a seven-game
+    series could hide under an 82-game average — this rules out a big, blunt, season-long
+    style effect, not every situational one.
+    """)
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ---
+    ## 7 · A4 — from a roster to a distribution of wins
+
+    **The engine, in one line:** team net rating = `5 × minutes-weighted mean
+    player DPM`; then Pythagorean wins from that net rating. The full roster is
+    required — the deep bench is exactly what drags a bad team. Check calibration
+    against what actually happened:
+    """)
     return
 
 
@@ -530,6 +595,34 @@ def _(load_mart, mo, pd, q):
 
 
 @app.cell
+def _(mo):
+    mo.md("""
+    ### How the projection works, field by field
+
+    - **proj net** = `5 × (minutes-weighted mean DPM)`. Five players are on the floor at
+      once, so a team's expected net rating is 5× the average DPM of whoever's playing,
+      weighted by minutes. Exactly A2's "sum of the parts," applied to the whole roster
+      instead of one lineup — and it needs the *full* roster, because a bad team's drag
+      is its deep bench, which a top-10 view would hide.
+    - **proj wins** = **Pythagorean expectation**. Turn net rating into points-for and
+      points-against (≈ 115 ± net/2 per game), then
+      `wins = 82 × PF^13.91 / (PF^13.91 + PA^13.91)`. The exponent 13.91 is the
+      empirically-fit "how strongly does outscoring convert to winning" constant for the
+      NBA — steep, because basketball has little luck over 82 games.
+    - **actual wins / error** — the reality check. Errors of a game or two across good
+      (OKC) and bad (WAS) teams say the chain holds: **individual talent + minutes → team
+      wins**, no fit term required to land close. (Which is A2 again: fit is a small
+      correction on a talent-dominated forecast.)
+
+    **Where it's silent:** these are *last* season's rosters and minutes. A real forecast
+    needs *next* season's minutes — injuries, trades, a young player's leap — which are
+    genuinely uncertain. That's the point of the simulation below: it turns that
+    uncertainty into a **range of wins** instead of a false-precision single number.
+    """)
+    return
+
+
+@app.cell
 def _(load_mart, mo, np):
     rr = load_mart("mart_roster")
     r_sim = rr[rr["team"] == "ORL"]
@@ -559,28 +652,26 @@ def _(load_mart, mo, np):
 
 @app.cell
 def _(mo):
-    mo.md(
-        """
-        ---
-        ## 8 · The conclusion, assembled
+    mo.md("""
+    ---
+    ## 8 · The conclusion, assembled
 
-        Every layer points one way:
+    Every layer points one way:
 
-        | analysis | question | answer |
-        |---|---|---|
-        | **A2** | what is lineup fit worth? | talent explains ~17%; fit adds ~2%, and only **rim protection** clears zero — spacing (even as gravity) doesn't |
-        | **A3** | does opponent style matter? | it moves your **process** (shot mix, pace) but not your **margin** — quality + home court decide games |
-        | **A4** | what does a roster project to? | a **distribution** of wins; a realistic talent move dwarfs any fit tweak |
+    | analysis | question | answer |
+    |---|---|---|
+    | **A2** | what is lineup fit worth? | talent explains ~17%; fit adds ~2%, and only **rim protection** clears zero — spacing (even as gravity) doesn't |
+    | **A3** | does opponent style matter? | it moves your **process** (shot mix, pace) but not your **margin** — quality + home court decide games |
+    | **A4** | what does a roster project to? | a **distribution** of wins; a realistic talent move dwarfs any fit tweak |
 
-        **The thesis:** measured honestly on one season, basketball outcomes are
-        dominated by talent and quality. The stylistic effects the discourse obsesses
-        over are real but *second-order* — small (rim protection) or *process-only*
-        (shot mix, pace). Fit is worth pricing; it is not worth mistaking for talent.
+    **The thesis:** measured honestly on one season, basketball outcomes are
+    dominated by talent and quality. The stylistic effects the discourse obsesses
+    over are real but *second-order* — small (rim protection) or *process-only*
+    (shot mix, pace). Fit is worth pricing; it is not worth mistaking for talent.
 
-        Everything above is reproducible: export CSVs → `make ingest transform` →
-        open a notebook. Data via BBref, PBPStats, DARKO, and Cleaning the Glass.
-        """
-    )
+    Everything above is reproducible: export CSVs → `make ingest transform` →
+    open a notebook. Data via BBref, PBPStats, DARKO, and Cleaning the Glass.
+    """)
     return
 
 
