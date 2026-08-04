@@ -8,6 +8,14 @@
 -- players' DARKO DPM), and CONTINUOUS fit features. "Fit" is studied as the
 -- residual net_pts_per100 - talent_sum_dpm (performance beyond talent).
 --
+-- RIM PROTECTION comes in two forms: rim_max_blk (max BLK% — a thin blocks-only
+-- proxy) and the gold-standard `rim_suppress` = negated opponent rim scoring rate
+-- (rim frequency x rim FG%) from PBPStats DEFENSE, matched onto each lineup by
+-- last-name key + closest minutes. It captures both DETERRENCE (opponents take
+-- fewer rim shots, `opp_rim_freq`) and ALTERATION (they miss more, `opp_rim_acc`).
+-- Caveat: rim defense is a slice of net rating, so rim_suppress is partly
+-- mechanical vs the outcome — read the A2 coefficient with that in mind.
+--
 -- Player attributes are joined by an accent-folded full-name key + team (DARKO,
 -- heights, advanced all use full names); lineup slots are matched with the
 -- same "F. Last" key used in mart_lineup_features. ~99.8% of slots resolve.
@@ -74,34 +82,74 @@ lu as (
             regexp_replace(lower(strip_accents(player_5)), '\s+(jr\.?|sr\.?|ii|iii|iv)$', '')
         ]) as k
     from stg_lineups_league
+),
+
+pdef as (
+    -- PBPStats defensive lineup rim stats, keyed by (team, sorted last names)
+    select
+        team,
+        array_to_string(list_sort(list_transform(string_split(short_name, ', '),
+            x -> regexp_replace(lower(strip_accents(x)), '\s+(jr\.?|sr\.?|ii|iii|iv)$', ''))), '|') as k,
+        minutes as dmin,
+        rim_freq,
+        rim_acc
+    from stg_pbp_lineups_defense
+),
+
+base as (
+    select
+        lu.lineup_id,
+        any_value(lu.lineup_key)                      as lineup_key,
+        any_value(lu.team)                            as team,
+        2026                                          as season,
+        any_value(lu.minutes)                         as minutes,
+        any_value(lu.net_pts_per100)                  as net_pts_per100,
+
+        count(a.k)                                    as n_covered,
+        sum(a.dpm)                                    as talent_sum_dpm,
+        any_value(lu.net_pts_per100) - sum(a.dpm)     as fit_residual,
+
+        -- continuous fit features (over covered players)
+        avg(a.par)                                    as spacing_mean,
+        min(a.par)                                    as spacing_min,
+        -- spacing as willingness x accuracy (3pt gravity); the fair-shot version
+        avg(a.gravity)                                as spacing_gravity_mean,
+        min(a.gravity)                                as spacing_gravity_min,
+        max(a.blk_pct)                                as rim_max_blk,
+        max(a.height_in)                              as tallest_in,
+        max(a.usg)                                    as usg_max,
+        stddev_pop(a.usg)                             as usg_spread,
+        max(a.ast_pct)                                as ast_max,
+
+        -- this lineup's sorted last-name key, to match PBPStats defense
+        array_to_string(list_sort(list_transform(string_split(any_value(lu.lineup_key), '|'),
+            t -> regexp_replace(lower(strip_accents(regexp_replace(t, '^[A-Za-z]\.\s+', ''))),
+                 '\s+(jr\.?|sr\.?|ii|iii|iv)$', ''))), '|')  as lastname_key
+    from lu
+    left join attr a on a.team = lu.team and a.k = lu.k
+    group by lu.lineup_id
+),
+
+rim as (
+    -- best PBPStats defensive match per lineup: same five last names, closest minutes
+    select
+        base.lineup_id,
+        p.rim_freq,
+        p.rim_acc,
+        row_number() over (partition by base.lineup_id order by abs(base.minutes - p.dmin)) as rn
+    from base
+    join pdef p on p.team = base.team and p.k = base.lastname_key
 )
 
 select
-    any_value(lu.lineup_key)                      as lineup_key,
-    any_value(lu.team)                            as team,
-    2026                                          as season,
-    any_value(lu.minutes)                         as minutes,
-    any_value(lu.net_pts_per100)                  as net_pts_per100,
-
-    count(a.k)                                    as n_covered,
-    sum(a.dpm)                                    as talent_sum_dpm,
-    any_value(lu.net_pts_per100) - sum(a.dpm)     as fit_residual,
-
-    -- continuous fit features (over covered players)
-    avg(a.par)                                    as spacing_mean,
-    min(a.par)                                    as spacing_min,
-    -- spacing as willingness x accuracy (3pt gravity); the fair-shot version
-    avg(a.gravity)                                as spacing_gravity_mean,
-    min(a.gravity)                                as spacing_gravity_min,
-    max(a.blk_pct)                                as rim_max_blk,
-    max(a.height_in)                              as tallest_in,
-    max(a.usg)                                    as usg_max,
-    stddev_pop(a.usg)                             as usg_spread,
-    max(a.ast_pct)                                as ast_max
-
-from lu
-left join attr a on a.team = lu.team and a.k = lu.k
-group by lu.lineup_id
+    base.* exclude (lineup_id, lastname_key),
+    r.rim_freq                                    as opp_rim_freq,   -- deterrence: lower = better
+    r.rim_acc                                     as opp_rim_acc,    -- alteration: lower = better
+    -- rim protection = negated opponent rim scoring rate (freq x accuracy);
+    -- higher = a lineup that both DETERS and ALTERS shots at the rim
+    -(r.rim_freq * r.rim_acc)                     as rim_suppress
+from base
+left join rim r on r.lineup_id = base.lineup_id and r.rn = 1
 
 -- ASSERTIONS (enforced by run.py):
 -- ASSERT == 600: SELECT count(*) FROM mart_lineup_features_league
@@ -114,3 +162,7 @@ group by lu.lineup_id
 -- ASSERT == 0: SELECT count(*) FROM mart_lineup_features_league WHERE fit_residual IS NULL
 -- BLK% in a sane band (guards the join/parse)
 -- ASSERT == 0: SELECT count(*) FROM mart_lineup_features_league WHERE rim_max_blk NOT BETWEEN 0 AND 20
+-- gold-standard rim protection from PBPStats defense: most lineups matched, rates valid
+-- ASSERT > 550: SELECT count(*) FROM mart_lineup_features_league WHERE rim_suppress IS NOT NULL
+-- ASSERT == 0: SELECT count(*) FROM mart_lineup_features_league WHERE opp_rim_freq NOT BETWEEN 0 AND 1
+-- ASSERT == 0: SELECT count(*) FROM mart_lineup_features_league WHERE opp_rim_acc NOT BETWEEN 0 AND 1

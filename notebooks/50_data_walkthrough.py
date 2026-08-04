@@ -211,7 +211,7 @@ def _(mo):
 def _(mo, q):
     lf = q("""select team, round(minutes) as min, net_pts_per100 as net,
               round(talent_sum_dpm,1) as talent, round(fit_residual,1) as residual,
-              round(rim_max_blk,1) as rim_blk, round(spacing_gravity_mean,1) as spacing
+              round(rim_suppress,3) as rim_suppress, round(spacing_gravity_mean,1) as spacing
               from mart_lineup_features_league where team in ('ORL','NOP')
               order by minutes desc limit 8""")
     mo.vstack(
@@ -221,7 +221,7 @@ def _(mo, q):
             ),
             mo.ui.table(lf, selection=None),
             mo.md(
-                "`talent` is what DPM predicts; `residual` is the part fit *might* explain; `rim_blk` and `spacing` are the candidate explanations we test next."
+                "`talent` is what DPM predicts; `residual` is the part fit *might* explain; `rim_suppress` (negated opponent rim scoring rate — higher = better rim protection) and `spacing` are the candidate explanations we test next."
             ),
         ]
     )
@@ -240,7 +240,7 @@ def _(mo):
     | `fit_residual` | `net − talent`: how far the group beat or missed its talent | +6 = played 6 better than the parts suggest | = real fit **+** DPM's own error **+** small-sample noise |
     | `minutes` | on-court time; also the regression **weight** | bigger row = more trustworthy | each team's ~top-20 lineups only |
     | `n_covered` | how many of the 5 slots matched a rostered player (0–5) | we analyze only `n_covered = 5` | ~9 deep-bench players league-wide have no profile |
-    | `rim_max_blk` | **rim protection**: highest block rate (BLK%) among the five | a rim-protecting big pushes it up | BLK% is a proxy — misses verticality/positioning/deterrence-without-blocks |
+    | `rim_suppress` | **rim protection**: negated opponent rim scoring rate — deterrence (`opp_rim_freq`) × alteration (`opp_rim_acc`), from PBPStats defense | higher = opponents take *fewer* and *worse* shots at the rim | partly *mechanical* (rim defense is a slice of net); `rim_max_blk` (blocks only) is the thin alternative it replaced |
     | `spacing_gravity_mean` | **spacing**: mean of players' 3PA-frequency × 3P-accuracy (willingness × ability) | how much the floor is stretched | doesn't capture off-ball movement / gravity |
     | `usg_spread`, `usg_max` | **shot-creation**: spread of usage rates, and the top usage | high = one dominant creator | usage ≠ creation *quality* |
     | `ast_max` | **playmaking**: the lineup's best assist rate | a primary passer raises it | AST% misses hockey assists / gravity passes |
@@ -266,7 +266,11 @@ def _(mo):
 @app.cell
 def _(load_mart, mo, np):
     d = load_mart("mart_lineup_features_league")
-    d = d[d["n_covered"] == 5].dropna(subset=["spacing_gravity_mean"]).copy()
+    d = (
+        d[d["n_covered"] == 5]
+        .dropna(subset=["spacing_gravity_mean", "rim_suppress"])
+        .copy()
+    )
     r_corr = np.corrcoef(d["talent_sum_dpm"], d["net_pts_per100"])[0, 1]
     mo.md(
         f"""
@@ -293,14 +297,14 @@ def _(mo):
 def _(d, mo, pd, sm):
     feats = [
         "talent_sum_dpm",
-        "rim_max_blk",
+        "rim_suppress",
         "spacing_gravity_mean",
         "usg_spread",
         "ast_max",
     ]
     nice = {
         "talent_sum_dpm": "talent (ΣDPM)",
-        "rim_max_blk": "rim protection",
+        "rim_suppress": "rim protection",
         "spacing_gravity_mean": "spacing (gravity)",
         "usg_spread": "usage balance",
         "ast_max": "playmaking",
@@ -349,13 +353,13 @@ def _(mo):
     mo.md("""
     ### How to read that regression table
 
-    - **coef (per SD)** — the features live on different scales (BLK% ~1–8, gravity ~5–20), so each is *standardized* to mean 0, SD 1 first. The coefficient then reads: *"points of net rating per **one standard deviation** more of this feature, holding the others fixed"* — directly comparable across rows. Rim protection's ≈ +1.4 means a typical bump in rim protection buys ~1.4 net/100.
+    - **coef (per SD)** — the features live on different scales (BLK% ~1–8, gravity ~5–20), so each is *standardized* to mean 0, SD 1 first. The coefficient then reads: *"points of net rating per **one standard deviation** more of this feature, holding the others fixed"* — directly comparable across rows. Rim protection has the largest fit coefficient — a typical (1-SD) improvement buys a few net/100.
     - **95% CI** — the plausible range for the coefficient. If it **includes 0**, we can't distinguish the effect from noise. Only rim protection's interval sits entirely above zero.
     - **p** — the chance of seeing an effect this big if the truth were zero; < 0.05 is the usual "real" bar.
     - **clustered by team** — 600 lineups but only 30 teams, and lineups from one team share its coaching, health, and system, so they aren't independent observations. Clustering widens the intervals *honestly* — naïve standard errors would overstate our certainty roughly 4×.
     - **R² (17% → 19%)** — the share of net-rating *variance* the model explains. Talent alone gets ~17%; adding every fit feature reaches ~19%. That **+2% is the ceiling** on how much fit can possibly matter here.
 
-    **Where it's silent:** this describes *associations*, not causes — teams that build rim protection also tend to defend and coach well, and we can't fully peel those apart. And "spacing doesn't clear zero" means *undetectable at this sample*, not *proven to be zero*.
+    **Where it's silent:** this describes *associations*, not causes — teams that build rim protection also tend to defend and coach well, and we can't fully peel those apart. Rim protection is now measured **directly** (PBPStats opponent-rim deterrence + alteration, far better than the `BLK%` we started with — they correlate only ~0.2) — but because rim defense is itself a slice of net rating, its coefficient is partly **mechanical**, with *deterrence* (opponents take fewer rim shots) the cleanest, least-circular piece. And "spacing doesn't clear zero" means *undetectable at this sample*, not *proven to be zero*.
     """)
     return
 

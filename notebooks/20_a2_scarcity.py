@@ -19,6 +19,10 @@ def _(mo):
         Standard errors are **clustered by team** — 600 lineups come from only 30
         teams, so lineups within a team aren't independent, and pretending they are
         would fake precision.
+
+        Rim protection is measured **directly** — `rim_suppress`, how much a lineup
+        deters shots at the rim *and* alters the ones taken (from PBPStats defense) —
+        not the thin blocks-only proxy (`BLK%`) we began with.
         """
     )
     return
@@ -41,7 +45,7 @@ def _(mo):
 def _(league, min_min, np, pd, sm):
     feats = [
         "talent_sum_dpm",
-        "rim_max_blk",
+        "rim_suppress",
         "spacing_gravity_mean",
         "usg_spread",
         "ast_max",
@@ -55,7 +59,7 @@ def _(league, min_min, np, pd, sm):
 
     nice = {
         "talent_sum_dpm": "talent (ΣDPM)",
-        "rim_max_blk": "rim protection (max BLK%)",
+        "rim_suppress": "rim protection (deters + alters)",
         "spacing_gravity_mean": "spacing (gravity: willingness×accuracy)",
         "usg_spread": "usage balance (spread)",
         "ast_max": "playmaking (top AST%)",
@@ -93,12 +97,12 @@ def _(league, min_min, np, pd, sm):
         .rsquared
     )
 
-    # rim effect in raw units: weak (p25) -> strong (p90) shot-blocker
+    # rim effect in raw units: a poorly-protecting (p10) -> strongly-protecting (p90) lineup
     raw = sm.WLS(
         d["net_pts_per100"], sm.add_constant(d[feats]), weights=d["minutes"]
     ).fit()
-    lo_b, hi_b = d["rim_max_blk"].quantile(0.25), d["rim_max_blk"].quantile(0.90)
-    rim_swing = raw.params["rim_max_blk"] * (hi_b - lo_b)
+    lo_b, hi_b = d["rim_suppress"].quantile(0.10), d["rim_suppress"].quantile(0.90)
+    rim_swing = raw.params["rim_suppress"] * (hi_b - lo_b)
     return coef, d, r2_full, r2_talent, rim_swing
 
 
@@ -158,10 +162,14 @@ def _(mo, r2_full, r2_talent, rim_swing):
           net-rating variance; adding every fit feature lifts it only to
           **{r2_full:.0%}**. Fit is a real but second-order effect.
         - **Rim protection is the one fit dimension that clears zero** after
-          controlling for talent — and it's *beyond* each player's own DPM, the
-          hallmark of complementarity: a rim protector anchors a lineup for more
-          than his individual value. Going from a weak (p25) to a strong (p90)
-          shot-blocker is worth **{rim_swing:+.1f} net/100**.
+          controlling for talent — and measured *directly* (deterrence + alteration
+          from PBPStats defense), it's far sharper than the BLK% proxy: from a
+          poorly- to a strongly-protecting lineup is worth **{rim_swing:+.1f}
+          net/100**, and deterrence (opponents take *fewer* rim shots) is
+          independently significant, not just blocked shots. *Caveat:* rim defense
+          is a slice of net rating, so this coefficient is partly **mechanical** —
+          read it as "rim defense tracks net strongly," with deterrence the cleanest
+          (least box-score-circular) piece.
         - **Spacing, usage balance, and playmaking do not show a robust
           independent effect** — notably counter to the "spacing is everything"
           narrative. And spacing gets a *fair* test here: it's 3-point **gravity**
@@ -178,7 +186,7 @@ def _(mo, r2_full, r2_talent, rim_swing):
 def _(league, mo, pd):
     # ORL/NOP read-through — on the RESIDUAL (net - talent), not raw net, so the
     # talent gap between the teams doesn't masquerade as a fit effect.
-    lg = league[league["n_covered"] == 5]
+    lg = league[(league["n_covered"] == 5)].dropna(subset=["rim_suppress"])
 
     def wmean(t, col):
         return (t[col] * t["minutes"]).sum() / t["minutes"].sum()
@@ -189,8 +197,8 @@ def _(league, mo, pd):
         rows.append(
             {
                 "team": tm,
-                "rim (max BLK%) league pctile": round(
-                    100 * (lg["rim_max_blk"] < t["rim_max_blk"].mean()).mean()
+                "rim protection league pctile": round(
+                    100 * (lg["rim_suppress"] < t["rim_suppress"].mean()).mean()
                 ),
                 "mean talent (ΣDPM)": round(wmean(t, "talent_sum_dpm"), 1),
                 "mean fit residual (net−talent)": round(wmean(t, "fit_residual"), 1),
@@ -201,13 +209,14 @@ def _(league, mo, pd):
             mo.md(
                 """
                 **Reading the Magic & Pelicans — with humility.** The leaguewide
-                model says rim protection helps at the margin. These two teams
-                *don't* individually confirm it: **ORL beats its talent by ~+5/100
-                with below-median rim protection**, while **NOP misses by ~−1 with
-                top-quartile rim protection.** Twenty noisy lineups per team can't
-                be explained by one coefficient — which is exactly why we estimate
-                the rule from all 30 teams and apply it gently, instead of reading
-                two teams' residuals as truth.
+                model says rim protection helps at the margin, but two teams of ~20
+                noisy lineups can't confirm a leaguewide coefficient on their own:
+                ORL beats its talent (positive fit residual) while NOP misses it, and
+                neither team's rim level cleanly explains that. Tellingly, NOP's
+                shot-blockers **don't** translate into low opponent rim scoring — the
+                direct measure disagrees with what `BLK%` implied. That's exactly why
+                we estimate the rule from all 30 teams and apply it gently, instead
+                of reading two teams' residuals as truth.
                 """
             ),
             mo.ui.table(pd.DataFrame(rows), selection=None),
@@ -225,9 +234,11 @@ def _(mo):
         teams that build for fit also tend to coach and stay healthy better.
         Net rating is opponent-*averaged*, not opponent-*adjusted* (that's A3's
         job, at the team level). These are each team's ~top-20 most-used lineups,
-        not all lineups. Rim protection is proxied by BLK% alone. And "fit adds
-        ~2% of variance" means: real at the margins, dwarfed by talent — which is
-        itself the honest headline for Post 2.
+        not all lineups. Rim protection is now measured directly (PBPStats
+        opponent-rim deterrence + alteration) — but because rim defense is itself a
+        component of net rating, its coefficient is **partly mechanical**, not a
+        clean causal "fit" effect. And "fit adds a few % of variance" means: real at
+        the margins, dwarfed by talent — which is itself the honest headline.
         """
     )
     return
