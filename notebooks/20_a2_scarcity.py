@@ -46,6 +46,7 @@ def _(league, min_min, np, pd, sm):
     feats = [
         "talent_sum_dpm",
         "rim_suppress",
+        "avg_height_in",
         "spacing_gravity_mean",
         "usg_spread",
         "ast_max",
@@ -60,6 +61,7 @@ def _(league, min_min, np, pd, sm):
     nice = {
         "talent_sum_dpm": "talent (ΣDPM)",
         "rim_suppress": "rim protection (deters + alters)",
+        "avg_height_in": "size (avg lineup height)",
         "spacing_gravity_mean": "spacing (gravity: willingness×accuracy)",
         "usg_spread": "usage balance (spread)",
         "ast_max": "playmaking (top AST%)",
@@ -145,7 +147,7 @@ def _(alt, coef, pd):
         )
     )
     (zero + whisk + dots).properties(
-        title="Rim protection is the only fit feature that clears zero (talent-controlled)",
+        title="Two fit features move net beyond talent: rim protection (+) and size (−)",
         width=460,
         height=200,
     )
@@ -161,15 +163,21 @@ def _(mo, r2_full, r2_talent, rim_swing):
         - **Talent dominates.** ΣDPM alone explains **{r2_talent:.0%}** of lineup
           net-rating variance; adding every fit feature lifts it only to
           **{r2_full:.0%}**. Fit is a real but second-order effect.
-        - **Rim protection is the one fit dimension that clears zero** after
-          controlling for talent — and measured *directly* (deterrence + alteration
-          from PBPStats defense), it's far sharper than the BLK% proxy: from a
-          poorly- to a strongly-protecting lineup is worth **{rim_swing:+.1f}
-          net/100**, and deterrence (opponents take *fewer* rim shots) is
-          independently significant, not just blocked shots. *Caveat:* rim defense
-          is a slice of net rating, so this coefficient is partly **mechanical** —
-          read it as "rim defense tracks net strongly," with deterrence the cleanest
-          (least box-score-circular) piece.
+        - **Rim protection clears zero** after controlling for talent — measured
+          *directly* (deterrence + alteration from PBPStats defense), it's far
+          sharper than the BLK% proxy: from a poorly- to a strongly-protecting
+          lineup is worth **{rim_swing:+.1f} net/100**, and deterrence (opponents
+          take *fewer* rim shots) is independently significant, not just blocked
+          shots. *Caveat:* rim defense is a slice of net rating, so this coefficient
+          is partly **mechanical** — deterrence is the cleanest (least
+          box-score-circular) piece.
+        - **Overall size clears zero too — negatively.** Taller lineups
+          *underperform* their talent (avg lineup height, holding talent and rim
+          protection fixed) — the modern small-ball cost of trading speed and
+          spacing for size. Unlike rim protection this isn't mechanical (height
+          isn't in the box score), so it's the *cleanest* fit signal here. And avg
+          height beats "tallest player," which was only marginal — your lineup's
+          *overall* size is what matters.
         - **Spacing, usage balance, and playmaking do not show a robust
           independent effect** — notably counter to the "spacing is everything"
           narrative. And spacing gets a *fair* test here: it's 3-point **gravity**

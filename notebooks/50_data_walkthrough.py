@@ -244,7 +244,7 @@ def _(mo):
     | `spacing_gravity_mean` | **spacing**: mean of players' 3PA-frequency × 3P-accuracy (willingness × ability) | how much the floor is stretched | doesn't capture off-ball movement / gravity |
     | `usg_spread`, `usg_max` | **shot-creation**: spread of usage rates, and the top usage | high = one dominant creator | usage ≠ creation *quality* |
     | `ast_max` | **playmaking**: the lineup's best assist rate | a primary passer raises it | AST% misses hockey assists / gravity passes |
-    | `tallest_in` | **size**: tallest player, in inches | 84 = 7'0" | one player, not the lineup's overall size |
+    | `avg_height_in` | **size**: the lineup's *average* height (inches) | taller = bigger; A2 finds bigger lineups *underperform* their talent (small-ball cost) | `tallest_in` (just the tallest player) is the weaker measure it replaced |
 
     **The gaps in one place:** the outcome is opponent-*averaged* (A3 will show that's mild — opponent style barely moves margin), it's each team's ~top-20 lineups over *one* season, and every fit feature is a *proxy* built from box-score-ish rates. Good enough to rank lineups; not to settle an argument. That honesty is why the analysis leans on intervals, not point estimates.
     """)

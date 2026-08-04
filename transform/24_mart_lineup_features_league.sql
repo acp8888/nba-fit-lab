@@ -117,6 +117,7 @@ base as (
         min(a.gravity)                                as spacing_gravity_min,
         max(a.blk_pct)                                as rim_max_blk,
         max(a.height_in)                              as tallest_in,
+        avg(a.height_in)                              as avg_height_in,   -- overall lineup size
         max(a.usg)                                    as usg_max,
         stddev_pop(a.usg)                             as usg_spread,
         max(a.ast_pct)                                as ast_max,
