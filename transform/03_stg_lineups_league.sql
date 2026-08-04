@@ -27,6 +27,8 @@ select
     cast(split_part("MP", ':', 1) as double)
         + cast(split_part("MP", ':', 2) as double) / 60.0   as minutes,
     cast(regexp_replace("PTS",  '^\+', '') as double)        as net_pts_per100,
+    -- eFG% is a signed own-minus-opponent eFG differential (percentage points),
+    -- NOT a net rating. Carried for reference; not used by any mart.
     cast(regexp_replace("eFG%", '^\+', '') as double)        as efg_diff,
     2026                                              as season
 

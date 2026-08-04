@@ -90,7 +90,7 @@ def _(RAW, mo, q):
     mo.vstack(
         [
             mo.md(
-                "**BBref — five-man lineups.** The outcome. Note `PTS`/`eFG%` are *signed differentials* (a validated net-rating-per-100, not raw totals):"
+                "**BBref — five-man lineups.** The outcome. The numbers are signed **on/off differentials (own − opponent)**, not raw totals: `PTS` is a validated net-rating-per-100 (r=0.99 vs PBPStats), and `eFG%` is the lineup's eFG *advantage* in percentage points (own eFG − eFG allowed). We use only `PTS` — `eFG%` is carried into staging but unused:"
             ),
             mo.ui.table(bb, selection=None),
             mo.md(
