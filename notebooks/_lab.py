@@ -59,9 +59,11 @@ def lineage_con():
 
         c = connect()
         tdir = Path(__file__).resolve().parent.parent / "transform"
+        # materialize as tables (read each S3 source once) so repeated lineage
+        # queries in the walkthrough hit memory instead of re-reading S3
         for f in sorted(tdir.glob("[0-9]*.sql")):
             c.execute(
-                f"create or replace view {view_name(f)} as {split_file(f.read_text())[0]}"
+                f"create or replace table {view_name(f)} as {split_file(f.read_text())[0]}"
             )
         _lineage_con = c
     return _lineage_con

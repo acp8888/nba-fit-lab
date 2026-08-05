@@ -114,12 +114,15 @@ def main() -> None:
         print("No numbered .sql files found in transform/")
         sys.exit(1)
 
-    print(f"Building {len(sql_files)} staging views...")
+    print(f"Building {len(sql_files)} tables...")
     all_failures: list[str] = []
     for f in sql_files:
         view = view_name(f)
         body, assert_lines = split_file(f.read_text())
-        con.execute(f"CREATE OR REPLACE VIEW {view} AS {body}")
+        # Materialize as TABLES, not views: each S3 source is read once here, so
+        # the many assertion queries (and the mart Parquet write) hit in-memory
+        # tables instead of re-reading S3 every time. Data is small (tens of MB).
+        con.execute(f"CREATE OR REPLACE TABLE {view} AS {body}")
         n = con.execute(f"SELECT count(*) FROM {view}").fetchone()[0]
         kind = "mart" if view.startswith("mart_") else "view"
         print(f"  {view}: {n} rows ({kind})")
@@ -135,7 +138,7 @@ def main() -> None:
         for msg in all_failures:
             print(f"  - {msg}")
         sys.exit(1)
-    print("\nDone — all views built, all assertions pass.")
+    print("\nDone — all tables built, all assertions pass.")
 
 
 if __name__ == "__main__":
