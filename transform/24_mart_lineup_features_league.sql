@@ -61,12 +61,14 @@ attr as (
         adv.blk_pct,
         adv.three_pa_rate                         as par,
         ht.height_in,
-        g.gravity
+        g.gravity,
+        st.cs_gravity
     from adv
     join stg_team_map tm on adv.team_bbref = tm.bbref_abbr
     left join dk on dk.fold = adv.fold and dk.team = tm.full_name
     left join ht on ht.fold = adv.fold and ht.team_bbref = adv.team_bbref
     left join stg_ctg_gravity_league g on regexp_replace(lower(strip_accents(g.player_name)), '\s+(jr\.?|sr\.?|ii|iii|iv)$', '') = adv.fold
+    left join stg_player_shot_types st on regexp_replace(lower(strip_accents(st.player_name)), '\s+(jr\.?|sr\.?|ii|iii|iv)$', '') = adv.fold and st.team = adv.team_bbref
     qualify row_number() over (partition by adv.team_bbref, adv.flast order by adv.mp desc) = 1
 ),
 
@@ -115,6 +117,8 @@ base as (
         -- spacing as willingness x accuracy (3pt gravity); the fair-shot version
         avg(a.gravity)                                as spacing_gravity_mean,
         min(a.gravity)                                as spacing_gravity_min,
+        -- spacing from CATCH-AND-SHOOT threes (NBA.com) — the spacing-relevant subset
+        avg(a.cs_gravity)                             as spacing_cs_mean,
         max(a.blk_pct)                                as rim_max_blk,
         max(a.height_in)                              as tallest_in,
         avg(a.height_in)                              as avg_height_in,   -- overall lineup size

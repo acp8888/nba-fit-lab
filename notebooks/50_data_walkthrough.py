@@ -211,7 +211,7 @@ def _(mo):
 def _(mo, q):
     lf = q("""select team, round(minutes) as min, net_pts_per100 as net,
               round(talent_sum_dpm,1) as talent, round(fit_residual,1) as residual,
-              round(rim_suppress,3) as rim_suppress, round(spacing_gravity_mean,1) as spacing
+              round(rim_suppress,3) as rim_suppress, round(spacing_cs_mean,2) as spacing
               from mart_lineup_features_league where team in ('ORL','NOP')
               order by minutes desc limit 8""")
     mo.vstack(
@@ -241,7 +241,7 @@ def _(mo):
     | `minutes` | on-court time; also the regression **weight** | bigger row = more trustworthy | each team's ~top-20 lineups only |
     | `n_covered` | how many of the 5 slots matched a rostered player (0–5) | we analyze only `n_covered = 5` | ~9 deep-bench players league-wide have no profile |
     | `rim_suppress` | **rim protection**: negated opponent rim scoring rate — deterrence (`opp_rim_freq`) × alteration (`opp_rim_acc`), from PBPStats defense | higher = opponents take *fewer* and *worse* shots at the rim | partly *mechanical* (rim defense is a slice of net); `rim_max_blk` (blocks only) is the thin alternative it replaced |
-    | `spacing_gravity_mean` | **spacing**: mean of players' 3PA-frequency × 3P-accuracy (willingness × ability) | how much the floor is stretched | doesn't capture off-ball movement / gravity |
+    | `spacing_cs_mean` | **spacing**: mean *catch-and-shoot* gravity (C&S 3PA-per-36 × C&S 3P%, NBA.com) — the stationary off-ball shooting that actually spaces the floor | higher = more floor-spacing threat | still a proxy — *true* gravity (defender attention) is private tracking; and it's **flat** in A2 anyway |
     | `usg_spread`, `usg_max` | **shot-creation**: spread of usage rates, and the top usage | high = one dominant creator | usage ≠ creation *quality* |
     | `ast_max` | **playmaking**: the lineup's best assist rate | a primary passer raises it | AST% misses hockey assists / gravity passes |
     | `avg_height_in` | **size**: the lineup's *average* height (inches) | taller = bigger; A2 finds bigger lineups *underperform* their talent (small-ball cost) | `tallest_in` (just the tallest player) is the weaker measure it replaced |
@@ -266,11 +266,7 @@ def _(mo):
 @app.cell
 def _(load_mart, mo, np):
     d = load_mart("mart_lineup_features_league")
-    d = (
-        d[d["n_covered"] == 5]
-        .dropna(subset=["spacing_gravity_mean", "rim_suppress"])
-        .copy()
-    )
+    d = d[d["n_covered"] == 5].dropna(subset=["spacing_cs_mean", "rim_suppress"]).copy()
     r_corr = np.corrcoef(d["talent_sum_dpm"], d["net_pts_per100"])[0, 1]
     mo.md(
         f"""
@@ -298,14 +294,14 @@ def _(d, mo, pd, sm):
     feats = [
         "talent_sum_dpm",
         "rim_suppress",
-        "spacing_gravity_mean",
+        "spacing_cs_mean",
         "usg_spread",
         "ast_max",
     ]
     nice = {
         "talent_sum_dpm": "talent (ΣDPM)",
         "rim_suppress": "rim protection",
-        "spacing_gravity_mean": "spacing (gravity)",
+        "spacing_cs_mean": "spacing (catch-and-shoot)",
         "usg_spread": "usage balance",
         "ast_max": "playmaking",
     }
@@ -336,12 +332,14 @@ def _(d, mo, pd, sm):
         [
             mo.ui.table(a2_tab, selection=None),
             mo.md(f"""
-        **Read it:** talent dominates. Of the fit features, **only rim protection
-        clears zero** — even spacing measured properly (gravity = willingness ×
-        accuracy) sits on the line. Talent alone explains **{r2t:.0%}** of variance;
-        all fit features together add only **{(m.rsquared - r2t):.0%}** more. That's the
-        whole A2 finding: *fit is real but second-order, and the part that survives is
-        rim protection, not the spacing the discourse fixates on.*
+        **Read it:** talent dominates. Two fit features clear zero — **rim
+        protection** (+, though partly mechanical) and **overall size** (−: bigger
+        lineups underperform their talent). Spacing does *not*, even measured as
+        **catch-and-shoot gravity** (the real floor-spacing subset, not a proxy).
+        Talent alone explains **{r2t:.0%}** of variance; all fit features together
+        add only **{(m.rsquared - r2t):.0%}** more. Fit is real but second-order —
+        and what survives is rim protection and (negatively) size, not the spacing
+        the discourse fixates on.
         """),
         ]
     )
@@ -664,7 +662,7 @@ def _(mo):
 
     | analysis | question | answer |
     |---|---|---|
-    | **A2** | what is lineup fit worth? | talent explains ~17%; fit adds ~2%, and only **rim protection** clears zero — spacing (even as gravity) doesn't |
+    | **A2** | what is lineup fit worth? | talent explains ~17%; fit adds a few %, and only **rim protection** (+) and **size** (−) clear zero — spacing (even catch-and-shoot) doesn't |
     | **A3** | does opponent style matter? | it moves your **process** (shot mix, pace) but not your **margin** — quality + home court decide games |
     | **A4** | what does a roster project to? | a **distribution** of wins; a realistic talent move dwarfs any fit tweak |
 

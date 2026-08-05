@@ -47,7 +47,7 @@ def _(league, min_min, np, pd, sm):
         "talent_sum_dpm",
         "rim_suppress",
         "avg_height_in",
-        "spacing_gravity_mean",
+        "spacing_cs_mean",
         "usg_spread",
         "ast_max",
     ]
@@ -62,7 +62,7 @@ def _(league, min_min, np, pd, sm):
         "talent_sum_dpm": "talent (ΣDPM)",
         "rim_suppress": "rim protection (deters + alters)",
         "avg_height_in": "size (avg lineup height)",
-        "spacing_gravity_mean": "spacing (gravity: willingness×accuracy)",
+        "spacing_cs_mean": "spacing (catch-and-shoot gravity)",
         "usg_spread": "usage balance (spread)",
         "ast_max": "playmaking (top AST%)",
     }
@@ -179,12 +179,13 @@ def _(mo, r2_full, r2_talent, rim_swing):
           height beats "tallest player," which was only marginal — your lineup's
           *overall* size is what matters.
         - **Spacing, usage balance, and playmaking do not show a robust
-          independent effect** — notably counter to the "spacing is everything"
-          narrative. And spacing gets a *fair* test here: it's 3-point **gravity**
-          (willingness × accuracy from CTG), not just attempt rate, and it still
-          sits flat on zero. If anything the weakest-spacer version is slightly
-          negative — a hint that going small for spacing costs the rim protection
-          that actually helps.
+          independent effect** — counter to the "spacing is everything" narrative,
+          and this is spacing's *best* test: **catch-and-shoot gravity** (NBA.com
+          tracking) — the actual floor-spacing subset (stationary, off-ball 3s), not
+          total attempts or the crude 3PM/FGA proxy — and it *still* sits flat on
+          zero (p ≈ 0.85). Spacing genuinely isn't a lineup-level lever once talent,
+          rim protection, and size are accounted for; better measurement confirms
+          the null rather than rescuing it.
         """
     )
     return
