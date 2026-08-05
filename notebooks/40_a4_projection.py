@@ -32,16 +32,16 @@ def _(load_mart):
 
 @app.cell
 def _(lineups, np):
-    # A2 rim-protection coefficient (raw, per BLK%) — see notebooks/20_a2_scarcity.
-    # It's the fit effect BEYOND talent, so we apply it CONSERVATIVELY (half) on
-    # top of the DPM projection, which already captures most of a team's defense.
-    RIM_COEF, CONSERV = 1.02, 0.5
+    # A2 rim-protection coefficient (raw, per unit rim_suppress) — see
+    # notebooks/20_a2_scarcity. The fit effect BEYOND talent, applied
+    # CONSERVATIVELY (half) on top of the DPM projection.
+    RIM_COEF, CONSERV = 75.2, 0.5
 
-    # team rim-protection level (minutes-weighted max BLK% across the team's
-    # lineups) and the league average, from the A2 league mart.
-    lu = lineups.copy()
+    # team rim-protection level (minutes-weighted rim_suppress = opponent rim
+    # scoring suppressed; higher = better) and the league average, from A2.
+    lu = lineups.dropna(subset=["rim_suppress"]).copy()
     tr = lu.groupby("team").apply(
-        lambda x: (x["rim_max_blk"] * x["minutes"]).sum() / x["minutes"].sum(),
+        lambda x: (x["rim_suppress"] * x["minutes"]).sum() / x["minutes"].sum(),
         include_groups=False,
     )
     team_rim = tr.to_dict()
@@ -56,7 +56,7 @@ def _(mo):
         -5, 5, value=0, step=0.5, label="roster move: Δ net from talent"
     )
     rim_delta = mo.ui.slider(
-        -2, 2, value=0, step=0.5, label="roster move: Δ team rim protection (BLK%)"
+        -3, 3, value=0, step=0.5, label="roster move: Δ net from rim protection"
     )
     mo.hstack([team, talent_delta, rim_delta], justify="start", gap=2)
     return rim_delta, talent_delta, team
@@ -75,9 +75,7 @@ def _(
 
     base_net = 5 * (dpm * w).sum() / w.sum()  # talent-only projection
     fit_net = RIM_COEF * CONSERV * (team_rim[team.value] - league_rim)  # A2 fit bump
-    move_net = (
-        talent_delta.value + RIM_COEF * CONSERV * rim_delta.value
-    )  # user's roster move
+    move_net = talent_delta.value + rim_delta.value  # user's move (both in net/100)
     proj_net = base_net + fit_net + move_net
 
     # uncertainty: player DPM ~ N(dpm, 1.2), minutes vary lognormally (injuries/role)
@@ -90,13 +88,11 @@ def _(
 
     p5, p50, p95 = np.percentile(wins_d, [5, 50, 95])
     p_playoff = float((wins_d >= 42).mean())
-    # two-lever sensitivity: wins per +1 unit of each lever
-    dwin_talent = pyth_wins(proj_net + 1) - pyth_wins(proj_net)
-    dwin_rim = pyth_wins(proj_net + RIM_COEF * CONSERV) - pyth_wins(proj_net)
+    # wins per +1 net rating (same whatever the source), for pricing moves
+    dwin_per_net = pyth_wins(proj_net + 1) - pyth_wins(proj_net)
     return (
         base_net,
-        dwin_rim,
-        dwin_talent,
+        dwin_per_net,
         fit_net,
         p5,
         p50,
@@ -152,21 +148,21 @@ def _(alt, pd, team, team_colors, wins_d):
 
 
 @app.cell
-def _(dwin_rim, dwin_talent, fit_net, mo, team):
+def _(dwin_per_net, fit_net, mo, team):
     mo.md(
         f"""
         ### Pricing a roster move
 
-        - a **+1 net-rating** talent upgrade ≈ **{dwin_talent:.1f} wins**
-        - a **+1 BLK%** swing in team rim protection ≈ **{dwin_rim:.1f} wins** — but
-          +1 BLK% is a *large* move (roughly a league quartile), so this is fit at
-          full stretch, applied conservatively.
+        - **+1 net rating** (from talent *or* rim protection) ≈ **{dwin_per_net:.1f} wins**.
+        - {team.value}'s built-in **fit adjustment** — its rim protection vs the
+          league — is **{fit_net:+.1f} net** (~{fit_net * dwin_per_net:+.1f} wins).
 
-        And {team.value}'s *actual* fit adjustment is only **{fit_net:+.1f} net**
-        (well under a win) — its rim protection sits near league average. So,
-        consistent with A2: fit is real and worth pricing, but **talent is what
-        sets the projection** — the ORL↔NOP gap of ~16 wins is essentially all
-        talent, not fit. Slide the two levers to price any move in wins.
+        The asymmetry isn't the conversion; it's what's *available*. A talent trade
+        realistically swings ±3–5 net; overhauling rim protection from average to
+        elite is worth ~+2.6. So **talent sets the season and fit is the fine
+        print** — and note the *direct* rim measure says NOP's rim protection is
+        genuinely poor (3rd percentile, a real ~1-win drag), not the asset that
+        BLK% implied.
         """
     )
     return
