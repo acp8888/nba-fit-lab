@@ -111,7 +111,7 @@ spacing wasn't the answer).
 ## New analyses ranked by value-per-effort
 
 1. **A + B (Post 1)** — highest value, lowest effort (verified). **Do now, no pull.**
-2. **C (generalize beyond n=2)** — ceiling-raiser for Post 1; builds the leaguewide star classification + `mart_player_league` archetype flags that **D reuses**. **Do next.**
+2. **C (generalize beyond n=2) — DONE (2025-26), in Post 1.** 11 teams built around a ball-dominant non-shooter; complement builds over-perform talent (**+1.8 vs +0.6** net/100; shooters-vs-fit **r=+0.69**, → +0.53 without OKC; regression +1.3/spacer, p≈0.07). Framed (per decision) as a **small edge dwarfed by talent** — *consistent with Post 2, not a contradiction* (Post 2 = lineup-level spacing null; C = smaller roster-level echo, n=11, likely partly DPM-under-pricing-shooting). **The 2024-25 team pull doubles n (→~22) and would settle it.** Also emits the `mart_player_league` archetype flags **D reuses**.
 3. **D (role coverage — now Post 3)** — committed post; shares C's `mart_player_league` build; **works even as a null**. **Do alongside C.**
 4. **E (two-season style)** — Post 5 / Mosley; needs the historical pull. **Do for Post 5.**
 5. **F (Mosley portability)** — spec now (dimensions from `mart_team_style`), grade in-season; depends on E.

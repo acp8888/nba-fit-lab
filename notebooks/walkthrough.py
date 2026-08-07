@@ -204,6 +204,128 @@ def _(mo):
     return
 
 
+@app.cell
+def _(mo):
+    mo.md("""
+    ---
+    ### Does the inversion generalize? (beyond n=2)
+
+    Two teams is an anecdote. Using the leaguewide flags, we take **every** team built around
+    a ball-dominant non-shooter (its top-usage player is one), classify what it built around
+    him — **duplicate** (a second such star) vs. **complement** (one star + shooters) — and
+    ask whether complement builds over-perform their *talent*.
+    """)
+    return
+
+
+@app.cell
+def _(load_mart, pd):
+    p1c_pl = load_mart("mart_player_league")
+    p1c_pl = p1c_pl[p1c_pl["season"] == 2026]
+    p1c_rost = load_mart("mart_roster")
+    p1c_style = load_mart("mart_team_style")
+    p1c_tal = (
+        p1c_rost.groupby(["team", "team_name"])
+        .apply(lambda x: 5 * (x.dpm * x.mpg).sum() / x.mpg.sum(), include_groups=False)
+        .reset_index(name="talent")
+        .merge(p1c_style[["team_name", "net_pts_poss"]], on="team_name")
+        .rename(columns={"net_pts_poss": "actual"})
+    )
+    p1c_tal["fit"] = p1c_tal["actual"] - p1c_tal["talent"]
+
+    def p1c_agg(g):
+        star = g.loc[g["usg"].idxmax()]
+        return pd.Series(
+            {
+                "star": star["player_name"],
+                "star_bdn": bool(star["is_ball_dominant_nonshooter"]),
+                "n_bdn": int(g["is_ball_dominant_nonshooter"].sum()),
+                "n_spacers": int(g["is_shooter"].sum()),
+            }
+        )
+
+    p1c = (
+        p1c_pl.groupby("team")
+        .apply(p1c_agg, include_groups=False)
+        .reset_index()
+        .merge(p1c_tal[["team", "talent", "actual", "fit"]], on="team")
+    )
+    p1c = p1c[p1c["star_bdn"]].copy()
+    p1c["build"] = p1c["n_bdn"].apply(
+        lambda n: (
+            "duplicate (2+ non-shooting stars)"
+            if n >= 2
+            else "complement (1 star + shooters)"
+        )
+    )
+    p1c_r = p1c["n_spacers"].corr(p1c["fit"])
+    return p1c, p1c_r
+
+
+@app.cell
+def _(alt, p1c, pd):
+    p1c_z = (
+        alt.Chart(pd.DataFrame({"y": [0]}))
+        .mark_rule(color="#999", strokeDash=[3, 3])
+        .encode(y="y:Q")
+    )
+    p1c_pts = (
+        alt.Chart(p1c)
+        .mark_circle(size=140, opacity=0.85)
+        .encode(
+            x=alt.X(
+                "n_spacers:Q",
+                title="shooters on the roster (spacing around the star) →",
+            ),
+            y=alt.Y("fit:Q", title="over / under-performance vs. talent (net/100)"),
+            color=alt.Color(
+                "build:N", scale=alt.Scale(range=["#C0453F", "#0A7CD6"]), title="build"
+            ),
+            tooltip=[
+                "team",
+                "star",
+                "n_bdn",
+                "n_spacers",
+                alt.Tooltip("fit:Q", format="+.1f"),
+            ],
+        )
+    )
+    p1c_lab = (
+        alt.Chart(p1c[p1c["team"].isin(["ORL", "NOP"])])
+        .mark_text(dx=10, fontSize=11, fontWeight="bold")
+        .encode(x="n_spacers:Q", y="fit:Q", text="team:N")
+    )
+    (p1c_z + p1c_pts + p1c_lab).properties(
+        title="More spacing → over-performing talent: a weak, talent-dwarfed trend (n=11)",
+        width=470,
+        height=300,
+    )
+    return
+
+
+@app.cell
+def _(mo, p1c, p1c_r):
+    p1c_dup = p1c[p1c["n_bdn"] >= 2]["fit"].mean()
+    p1c_comp = p1c[p1c["n_bdn"] == 1]["fit"].mean()
+    mo.md(f"""
+    {len(p1c)} of 30 teams (2025-26) are built around a ball-dominant non-shooter. Complement
+    builds over-perform their talent more than duplicate builds (**{p1c_comp:+.1f}** vs.
+    **{p1c_dup:+.1f}** net/100; shooters-vs-over-performance r = **{p1c_r:+.2f}**).
+
+    > 🏀 **In plain English:** surrounding a non-shooting star with shooters is a **small,
+    > real edge** — but a *fragile* one (only 11 teams, and it leans on Oklahoma City), and
+    > **talent dwarfs it** (talent alone explains ~85% of the scoreboard; the spacing edge is
+    > ~1 net per shooter, on the edge of significance). This is **consistent with Post 2, not a
+    > contradiction:** Post 2 shows spacing doesn't move a *given lineup*; this is the smaller
+    > roster-level echo. And it's why the bet still failed both times — **Orlando skipped even
+    > this edge by duplicating; New Orleans took it but had bottom-five talent.**
+
+    **The gaps.** n = 11 and marginal (p ≈ 0.07); DARKO already prices *some* shooting. The
+    2024-25 team pull roughly doubles the sample and would settle whether the edge is real.
+    """)
+    return
+
+
 # ============================ POST 2 =========================================
 @app.cell
 def _(mo):
