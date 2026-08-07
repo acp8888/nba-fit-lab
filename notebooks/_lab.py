@@ -42,6 +42,106 @@ def load_mart(name: str):
     ).df()
 
 
+# --- Held-out 2024-25 five-man features (for the A2 replication section) ------
+# mart_lineup_features_league is the CURRENT season (2025-26) only; the 2024-25
+# prior-season pull was ingested to raw for a held-out replication but deliberately
+# NOT folded into that mart (its consumers assume one season). This rebuilds the
+# SAME feature set from the 2024-25 raw, via the same code path, so the notebook can
+# show the replication live. No CTG in 2024-25 (licensing) -> spacing uses NBA.com
+# catch-and-shoot only, which is the A2 spacing measure anyway.
+_2024 = None
+
+
+def load_5man_features_2024():
+    """2024-25 leaguewide 5-man lineup features, rebuilt from raw (held-out season)."""
+    global _2024
+    if _2024 is not None:
+        return _2024
+    con = connect()
+
+    def fold(c):
+        return (
+            r"regexp_replace(lower(strip_accents("
+            + c
+            + r")), '\s+(jr\.?|sr\.?|ii|iii|iv)$', '')"
+        )
+
+    def flast(c):
+        return (
+            r"regexp_replace(lower(strip_accents(left(" + c + r",1)||'. '||"
+            r"array_to_string(list_slice(string_split("
+            + c
+            + r",' '),2,100),' '))), '\s+(jr\.?|sr\.?|ii|iii|iv)$', '')"
+        )
+
+    r = f"{RAW}/%s/2025-07-08/%s"
+    con.execute("""create or replace temp table tmap as select * from (values
+     ('Atlanta Hawks','ATL'),('Boston Celtics','BOS'),('Brooklyn Nets','BRK'),('Charlotte Hornets','CHO'),
+     ('Chicago Bulls','CHI'),('Cleveland Cavaliers','CLE'),('Dallas Mavericks','DAL'),('Denver Nuggets','DEN'),
+     ('Detroit Pistons','DET'),('Golden State Warriors','GSW'),('Houston Rockets','HOU'),('Indiana Pacers','IND'),
+     ('Los Angeles Clippers','LAC'),('Los Angeles Lakers','LAL'),('Memphis Grizzlies','MEM'),('Miami Heat','MIA'),
+     ('Milwaukee Bucks','MIL'),('Minnesota Timberwolves','MIN'),('New Orleans Pelicans','NOP'),('New York Knicks','NYK'),
+     ('Oklahoma City Thunder','OKC'),('Orlando Magic','ORL'),('Philadelphia 76ers','PHI'),('Phoenix Suns','PHO'),
+     ('Portland Trail Blazers','POR'),('Sacramento Kings','SAC'),('San Antonio Spurs','SAS'),('Toronto Raptors','TOR'),
+     ('Utah Jazz','UTA'),('Washington Wizards','WAS')) as t(full_name, bbref)""")
+    con.execute(f"""create or replace temp table adv as
+      select "Team" team, {fold('"Player"')} fold, {flast('"Player"')} flast,
+             cast("USG%" as double) usg, cast("AST%" as double) ast_pct, cast("BLK%" as double) blk_pct, cast("MP" as int) mp
+      from read_csv('{r % ("bbref", "league_player_advanced.csv")}', skip=4)
+      where "Team" in (select bbref from tmap)""")
+    con.execute(f"""create or replace temp table dk as
+      select {fold('"Player"')} fold, "Team" team, cast(regexp_replace("DPM",'^\\+','') as double) dpm
+      from read_csv_auto('{r % ("darko", "darko-dpm-leaderboard.csv")}')""")
+    con.execute(f"""create or replace temp table ht as
+      select {fold('"Player"')} fold, "Team" team_bbref,
+             cast(split_part("Ht",'-',1) as int)*12 + cast(split_part("Ht",'-',2) as int) height_in
+      from read_csv_auto('{r % ("bbref", "league_player_heights.csv")}')""")
+    con.execute(f"""create or replace temp table st as
+      select {fold('"Player"')} fold,
+        case "Team" when 'BKN' then 'BRK' when 'CHA' then 'CHO' when 'PHX' then 'PHO' else "Team" end team,
+        coalesce(("CS_FG3A"::double/nullif("MIN",0)*36.0)*"CS_FG3_PCT"::double, 0) cs_gravity
+      from read_csv_auto('{r % ("nbastats", "league_player_shot_types.csv")}')""")
+    con.execute(f"""create or replace temp table pdef as
+      select case "Team" when 'BKN' then 'BRK' when 'CHA' then 'CHO' when 'PHX' then 'PHO' else "Team" end team,
+        array_to_string(list_sort(list_transform(string_split("ShortName", ', '), x -> {fold("x")})), '|') k,
+        "Minutes" dmin, "AtRimFrequency" rim_freq, "AtRimAccuracy" rim_acc
+      from read_csv_auto('{r % ("pbpstats", "league_pbpstats_lineups_5man_defense.csv")}')""")
+    con.execute(f"""create or replace temp table lug as
+      with s as (select "Team" team, list_sort(string_split("Lineup",' | ')) arr,
+                   (cast(split_part("MP",':',1) as double)+cast(split_part("MP",':',2) as double)/60.0) as mins,
+                   cast(regexp_replace("PTS",'^\\+','') as double) as net
+                 from read_csv_auto('{r % ("bbref", "league_lineups_5man.csv")}'))
+      select row_number() over () lineup_id, team, array_to_string(arr,'|') lineup_key, mins as minutes, net,
+        arr[1] p1, arr[2] p2, arr[3] p3, arr[4] p4, arr[5] p5 from s""")
+    con.execute("""create or replace temp table attr as
+      select adv.team, adv.flast k, dk.dpm, adv.usg, adv.ast_pct, ht.height_in, st.cs_gravity
+      from adv join tmap tm on adv.team = tm.bbref
+      left join dk on dk.fold = adv.fold and dk.team = tm.full_name
+      left join ht on ht.fold = adv.fold and ht.team_bbref = adv.team
+      left join st on st.fold = adv.fold and st.team = adv.team
+      qualify row_number() over (partition by adv.team, adv.flast order by adv.mp desc) = 1""")
+    con.execute(f"""create or replace temp table lu as
+      select lineup_id, lineup_key, team, minutes, net,
+        unnest([{flast("p1")},{flast("p2")},{flast("p3")},{flast("p4")},{flast("p5")}]) k from lug""")
+    con.execute("""create or replace temp table base as
+      select lu.lineup_id, any_value(lu.team) team, any_value(lu.minutes) as minutes,
+        any_value(lu.net) as net_pts_per100, count(a.k) n_covered, sum(a.dpm) talent_sum_dpm,
+        avg(a.cs_gravity) spacing_cs_mean, avg(a.height_in) avg_height_in,
+        stddev_pop(a.usg) usg_spread, max(a.ast_pct) ast_max,
+        array_to_string(list_sort(list_transform(string_split(any_value(lu.lineup_key),'|'),
+          t -> regexp_replace(lower(strip_accents(regexp_replace(t,'^[A-Za-z]\\.\\s+',''))),'\\s+(jr\\.?|sr\\.?|ii|iii|iv)$',''))),'|') lastname_key
+      from lu left join attr a on a.team=lu.team and a.k=lu.k group by lu.lineup_id""")
+    con.execute("""create or replace temp table rim as
+      select lineup_id, rim_freq, rim_acc from (
+        select base.lineup_id, p.rim_freq, p.rim_acc,
+          row_number() over (partition by base.lineup_id order by abs(base.minutes-p.dmin)) rn
+        from base join pdef p on p.team=base.team and p.k=base.lastname_key) where rn=1""")
+    _2024 = con.execute("""select base.* exclude(lineup_id,lastname_key),
+        -(r.rim_freq*r.rim_acc) rim_suppress, 2025 as season
+      from base left join rim r on r.lineup_id=base.lineup_id""").df()
+    return _2024
+
+
 # --- Lineage access (for the data-walkthrough notebook only) -----------------
 # The house pattern says notebooks read marts, not raw/staging. The walkthrough
 # is the deliberate exception: it explains raw -> staging -> mart, so it needs to

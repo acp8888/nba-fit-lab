@@ -264,14 +264,130 @@ def _(mo):
     mo.md(
         """
         ---
+        ## 3. Where fit meets the standings — the swing games
+
+        A2's verdict is that fit is *small* on the scoreboard. But games are decided
+        by small margins, so even a small edge is **leveraged**. This section flags the
+        **swing games**: close games (within 5 points) a team **won as an underdog** or
+        **lost as a favorite**, versus what opponent quality + home court + the team's
+        own baseline predicted.
+
+        This is a *proxy* — the "surprise" in any one game is fit **plus** shooting
+        variance, health, and luck. So it's a **target list of swing games**, not proof
+        that fit decided them. (Turning it into a real fit-win/loss call needs per-game
+        rim-protection data — the next data pull.)
+        """
+    )
+    return
+
+
+@app.cell
+def _(games, np, pd, sm):
+    sw_g = games.copy()
+    sw_g["home"] = (~sw_g["is_away"]).astype(int)
+    sw_g["nop"] = (sw_g["team"] == "NOP").astype(int)  # each team's baseline strength
+    sw_X = sm.add_constant(sw_g[["opp_net_pts_poss", "home", "nop"]])
+    sw_model = sm.OLS(sw_g["margin"], sw_X).fit()
+    sw_g["exp_margin"] = sw_model.predict(sw_X)
+    sw_g["overperf"] = sw_g["margin"] - sw_g["exp_margin"]  # game-level surprise
+    sw_g["won"] = sw_g["margin"] > 0
+    sw_g["close"] = sw_g["margin"].abs() <= 5
+
+    def sw_label(r):
+        if r["close"] and r["won"] and r["exp_margin"] < 0:
+            return "STOLEN win"
+        if r["close"] and not r["won"] and r["exp_margin"] > 0:
+            return "GIFT loss"
+        return ""
+
+    sw_g["swing"] = sw_g.apply(sw_label, axis=1)
+    sw_summ = pd.DataFrame(
+        [
+            {
+                "team": t,
+                "overall": f"{sw_g[sw_g.team == t].won.sum()}-{(~sw_g[sw_g.team == t].won).sum()}",
+                "close games (≤5)": int(sw_g[(sw_g.team == t) & sw_g.close].shape[0]),
+                "close record": f"{sw_g[(sw_g.team == t) & sw_g.close].won.sum()}-{(~sw_g[(sw_g.team == t) & sw_g.close].won).sum()}",
+                "stole": int(((sw_g.team == t) & (sw_g.swing == "STOLEN win")).sum()),
+                "gave away": int(
+                    ((sw_g.team == t) & (sw_g.swing == "GIFT loss")).sum()
+                ),
+            }
+            for t in ["ORL", "NOP"]
+        ]
+    )
+    sw_log = sw_g[sw_g["swing"] != ""].copy()
+    sw_log["game"] = (
+        np.where(sw_log["home"] == 1, "vs ", "@ ") + sw_log["opponent_abbr"]
+    )
+    sw_log = (
+        sw_log[
+            ["team", "game_date", "game", "margin", "exp_margin", "overperf", "swing"]
+        ]
+        .round({"exp_margin": 1, "overperf": 1})
+        .sort_values(["team", "overperf"], ascending=[True, False])
+    )
+    sw_log.columns = ["team", "date", "game", "actual", "expected", "surprise", "label"]
+    return sw_log, sw_model, sw_summ
+
+
+@app.cell
+def _(mo, sw_model, sw_summ):
+    mo.vstack(
+        [
+            mo.md(
+                f"Expected margin = opponent quality + home court "
+                f"(worth {sw_model.params['home']:+.1f} points) + each team's own baseline. "
+                f'**"Surprise" = actual − expected.**'
+            ),
+            mo.ui.table(sw_summ, selection=None),
+            mo.md("""
+        **Orlando won its coin-flips (close record above .500); New Orleans lost
+        them.** That's the swing story — and it matches A4's season read: Orlando
+        *over*-shot its ~44-win projection, New Orleans *under*-shot its ~28.
+
+        > 🏀 One honest caveat: a bad team is rarely *favored*, so it gets few
+        > give-away chances — read the **close record**, not the raw stole/gave counts.
+        """),
+        ]
+    )
+    return
+
+
+@app.cell
+def _(mo, sw_log):
+    mo.vstack(
+        [
+            mo.md(
+                "**The swing games** — close ones won as an underdog (STOLEN) or lost "
+                "as a favorite (GIFT), sorted by how surprising the result was:"
+            ),
+            mo.ui.table(sw_log, selection=None),
+        ]
+    )
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        """
+        ---
         **What this means for the Magic & Pelicans (and the caveats).** You can
-        largely ignore opponent style when projecting *outcomes* — beating a team
-        is about talent and home court, not their archetype. Style matters for
-        *preparation*: expect your shot diet and tempo to bend toward the
-        opponent's scheme. Caveats: 171 games, one season; opponent style measured
-        at the season level; the rim-protection matchup we hypothesized (rim-heavy
-        offense vs rim-deterring defense) did **not** show a detectable outcome
-        effect here — an honest null worth revisiting with more data.
+        largely ignore opponent style when projecting *outcomes* — beating a team is
+        about talent and home court, not their archetype. Style matters for
+        *preparation*: expect your shot diet and tempo to bend toward the opponent's
+        scheme. And the **swing games** above are where the season actually turned —
+        Orlando banked its close ones, New Orleans didn't.
+
+        *Caveats:* 171 games, one season; opponent style measured at the season level;
+        the rim-protection matchup we hypothesized (rim-heavy offense vs rim-deterring
+        defense) did **not** show a detectable outcome effect here. The swing-game list
+        is a *proxy* (all-causes). The honest next step — turning it into a real
+        **fit-win / fit-loss** classifier — is a **per-game rim-protection pull**: for
+        each swing game, did the team also *win the battle at the rim*? If the stolen
+        wins line up with rim-battle wins, fit is doing real clutch work; if not, it's
+        variance.
         """
     )
     return
