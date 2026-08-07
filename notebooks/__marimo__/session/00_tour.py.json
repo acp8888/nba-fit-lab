@@ -1,0 +1,87 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.23.13",
+    "script_metadata_hash": null
+  },
+  "cells": [
+    {
+      "id": "Hbol",
+      "code_hash": "378fcd4514803347cd8935461865e537",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"marimo-tour-why-theres-no-stale-state\">marimo tour \u2014 why there's no stale state</h1>\n<span class=\"paragraph\">In a Jupyter notebook, cells share hidden mutable state and you run them in\nwhatever order you click. Change a variable in cell 5, forget to re-run\ncell 9 that used it, and cell 9 now shows a <strong>stale</strong> value that no longer\nmatches your code. The notebook lies to you.</span>\n<span class=\"paragraph\">marimo removes that failure mode by construction. It reads your cells,\nsees which variables each one <em>defines</em> and <em>uses</em>, and builds a\n<strong>dependency graph (DAG)</strong>. When a value changes, marimo re-runs exactly\nthe cells downstream of it \u2014 no more, no less \u2014 so what you see always\nmatches the current code. Move the slider below and watch it happen.</span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "b6c5654970e7591605d4061ec355ddda",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<marimo-ui-element object-id='MJUe-0' random-id='a3dd4dbf-c979-1b7c-bf0e-3e7f8fa710b7'><marimo-slider data-initial-value='4' data-label='&quot;&#92;u003cspan class=&#92;&quot;markdown prose dark:prose-invert contents&#92;&quot;&#92;u003e&#92;u003cspan class=&#92;&quot;paragraph&#92;&quot;&#92;u003epick n = &#92;u003c/span&#92;u003e&#92;u003c/span&#92;u003e&quot;' data-start='1' data-stop='20' data-steps='[]' data-debounce='false' data-disabled='false' data-orientation='&quot;horizontal&quot;' data-show-value='false' data-include-input='false' data-full-width='false'></marimo-slider></marimo-ui-element>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "vblA",
+      "code_hash": "9275bc4429734e5def842a1fe98b487f",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h3 id=\"n-2-8\">n \u00d7 2 = <strong>8</strong></h3></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "bkHC",
+      "code_hash": "111be2e979cf3be5e76275b0f93e5a33",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><span class=\"paragraph\">And separately: n is <strong>4</strong>, n\u00b2 is <strong>16</strong>.</span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "lEQa",
+      "code_hash": "9b67ec59ddb0f21f58ffd1ac368960f6",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><hr />\n<span class=\"paragraph\"><strong>Two rules that make this work \u2014 and that you'll feel while editing:</strong></span>\n<ol>\n<li><strong>A variable is defined in exactly one cell.</strong> Try to assign <code>n</code> in\n   another cell and marimo refuses \u2014 that ambiguity is the root of stale\n   state, so it's simply not allowed.</li>\n<li><strong>Cell order on screen doesn't matter; the DAG does.</strong> A cell runs when\n   its inputs are ready, not because it's higher up.</li>\n</ol>\n<span class=\"paragraph\">Next: <code>10_lineup_explorer.py</code>, which applies the house pattern \u2014 read the\nS3 marts (never raw), then drive a real analysis with UI controls.</span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "PKri",
+      "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    }
+  ]
+}
