@@ -142,6 +142,34 @@ def load_5man_features_2024():
     return _2024
 
 
+# --- Per-game rim protection (for the A3 swing-game resolution) ---------------
+# Per-game opponent (defense) + own (offense) at-rim scoring for ORL/NOP, 2025-26,
+# from PBPStats opponent/team shot-distribution game logs. Raw-read exception like
+# load_5man_features_2024 — this is game-level input for the fit-win/loss check, not
+# a mart. rim_suppress_game = -(rim frequency x rim accuracy) allowed (higher = better).
+_games_rim = None
+
+
+def load_games_rim():
+    """Per-game rim for ORL & NOP: (team, date, rim_suppress_game, own_rim)."""
+    global _games_rim
+    if _games_rim is not None:
+        return _games_rim
+    con = connect()
+
+    def one(t):
+        opp = f"{RAW}/pbpstats/2026-07-08/pbpstats_opp_gamelog_shotdist_{t}.csv"
+        own = f"{RAW}/pbpstats/2026-07-08/pbpstats_team_gamelog_shotdist_{t}.csv"
+        return f"""select '{t}' as team, o."Date"::varchar as date,
+                   -(o."AtRimFrequency" * o."AtRimAccuracy") as rim_suppress_game,
+                   (m."AtRimFrequency" * m."AtRimAccuracy") as own_rim
+            from read_csv_auto('{opp}') o
+            join read_csv_auto('{own}') m on m."Date" = o."Date" """
+
+    _games_rim = con.execute(one("ORL") + " union all " + one("NOP")).df()
+    return _games_rim
+
+
 # --- Lineage access (for the data-walkthrough notebook only) -----------------
 # The house pattern says notebooks read marts, not raw/staging. The walkthrough
 # is the deliberate exception: it explains raw -> staging -> mart, so it needs to

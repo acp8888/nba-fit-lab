@@ -369,25 +369,98 @@ def _(mo, sw_log):
 
 
 @app.cell
+def _(games, load_games_rim, pd, sm):
+    # Per-game test: does a night's rim play predict OVERPERFORMING expectation?
+    rr = games.copy()
+    rr["home"] = (~rr["is_away"]).astype(int)
+    rr["nop"] = (rr["team"] == "NOP").astype(int)
+    rr_x = sm.add_constant(rr[["opp_net_pts_poss", "home", "nop"]])
+    rr["overperf"] = rr["margin"] - sm.OLS(rr["margin"], rr_x).fit().predict(rr_x)
+    rr["won"] = rr["margin"] > 0
+    rr["close"] = rr["margin"].abs() <= 5
+    rr["date"] = rr["game_date"].astype(str)
+    rr = rr.merge(load_games_rim(), on=["team", "date"], how="inner")
+    rr["rim_edge"] = rr["rim_suppress_game"] - rr.groupby("team")[
+        "rim_suppress_game"
+    ].transform("mean")
+    rr["battle_edge"] = (
+        rr["own_rim"] + rr["rim_suppress_game"]
+    )  # our rim scoring − theirs
+    rr["battle_edge"] = rr["battle_edge"] - rr.groupby("team")["battle_edge"].transform(
+        "mean"
+    )
+
+    def coefp(col):
+        z = sm.add_constant(
+            pd.DataFrame(
+                {
+                    col: (rr[col] - rr[col].mean()) / rr[col].std(),
+                    "nop": (rr["team"] == "NOP").astype(int),
+                }
+            )
+        )
+        m = sm.OLS(rr["overperf"], z).fit(cov_type="HC1")
+        return m.params[col], m.pvalues[col]
+
+    rim_prot = coefp("rim_edge")
+    rim_batt = coefp("battle_edge")
+    rr_cg = rr[rr["close"]]
+    rr_hi, rr_lo = rr_cg[rr_cg["rim_edge"] > 0], rr_cg[rr_cg["rim_edge"] < 0]
+    rim_close = {
+        "hi": f"{rr_hi.won.sum()}-{(~rr_hi.won).sum()}",
+        "hi_pct": rr_hi.won.mean(),
+        "lo": f"{rr_lo.won.sum()}-{(~rr_lo.won).sum()}",
+        "lo_pct": rr_lo.won.mean(),
+    }
+    return rim_batt, rim_close, rim_prot
+
+
+@app.cell
+def _(mo, rim_batt, rim_close, rim_prot):
+    mo.md(f"""
+    ---
+    ## 3½. Did the swing games actually track rim protection?
+
+    We pulled **per-game** rim data (PBPStats opponent + team shot-distribution logs)
+    and asked the direct question: does a night's rim play predict *overperforming*
+    expectation — i.e., does **fit** (rim protection, A2's one lever) really swing games?
+    `rim protection = −(opponent rim frequency × rim accuracy)`, measured against each
+    team's own season norm.
+
+    | per-game edge | effect on the "surprise" | verdict |
+    |---|---|---|
+    | **rim protection** (defense — *the fit lever*) | {rim_prot[0]:+.2f} pts/game | **not significant** (p = {rim_prot[1]:.2f}) |
+    | full **rim battle** (offense + defense at the rim) | {rim_batt[0]:+.2f} pts/game | significant (p = {rim_batt[1]:.3f}) — but *mechanical* |
+
+    Close games (≤5 pts): won **{rim_close["hi_pct"]:.0%}** ({rim_close["hi"]}) on
+    above-norm rim-protection nights vs **{rim_close["lo_pct"]:.0%}** ({rim_close["lo"]}) below.
+
+    > 🏀 **The honest answer.** Rim *protection* — the actual fit lever — **does not
+    > reliably decide individual games** (p = {rim_prot[1]:.2f}); the swing games are mostly
+    > variance. The full rim *battle* tracks the scoreboard, but that's **mechanical**
+    > (scoring at the rim *is* scoring — near-circular with the margin). A ~1-win-per-season
+    > fit edge is ~0.1 points a night, invisible against the ±15-point noise of one game.
+    > **Fit's leverage is a faint aggregate tilt (the {rim_close["hi_pct"]:.0%}-vs-{rim_close["lo_pct"]:.0%}
+    > close-game lean), not a game-by-game switch** — exactly what "fit is real but small" predicts.
+    """)
+    return
+
+
+@app.cell
 def _(mo):
     mo.md(
         """
         ---
-        **What this means for the Magic & Pelicans (and the caveats).** You can
-        largely ignore opponent style when projecting *outcomes* — beating a team is
-        about talent and home court, not their archetype. Style matters for
-        *preparation*: expect your shot diet and tempo to bend toward the opponent's
-        scheme. And the **swing games** above are where the season actually turned —
-        Orlando banked its close ones, New Orleans didn't.
+        **What this means for the Magic & Pelicans (and the caveats).** You can largely
+        ignore opponent style when projecting *outcomes* — beating a team is about talent
+        and home court, not their archetype. Style matters for *preparation*: expect your
+        shot diet and tempo to bend toward the opponent's scheme. The **swing games** are
+        where the season turned (Orlando banked its close ones, New Orleans didn't) — but
+        §3½ shows that's **not** the fit lever doing clutch work; it's mostly variance.
 
-        *Caveats:* 171 games, one season; opponent style measured at the season level;
-        the rim-protection matchup we hypothesized (rim-heavy offense vs rim-deterring
-        defense) did **not** show a detectable outcome effect here. The swing-game list
-        is a *proxy* (all-causes). The honest next step — turning it into a real
-        **fit-win / fit-loss** classifier — is a **per-game rim-protection pull**: for
-        each swing game, did the team also *win the battle at the rim*? If the stolen
-        wins line up with rim-battle wins, fit is doing real clutch work; if not, it's
-        variance.
+        *Caveats:* 171 games, one season; opponent style measured at the season level; and
+        the game-level fit signal is real but too small to detect against single-game noise
+        — fit shows up in the aggregate, not on any one night.
         """
     )
     return
@@ -405,13 +478,14 @@ def _():
     from sklearn.preprocessing import StandardScaler
 
     from _lab import TEAM_COLORS as team_colors
-    from _lab import load_mart
+    from _lab import load_games_rim, load_mart
 
     return (
         KMeans,
         StandardScaler,
         adjusted_rand_score,
         alt,
+        load_games_rim,
         load_mart,
         mo,
         np,
