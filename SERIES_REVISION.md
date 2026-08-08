@@ -82,16 +82,16 @@ spacing wasn't the answer).
 - **Q:** Which fit ingredient pays, and can you stack talent?
 - **Data:** `mart_lineup_features_league` (2025-26) + `load_5man_features_2024()`; `mart_pair_synergy` (**label 2024-25**).
 - **Method:** unchanged — regression, saturation curve, held-out replication, pair-WOWY.
-- **Takeaway:** talent dominates & saturates; rim protection is the one lever; **spacing is a null — NOP's elite spacer (Murphy) is the live proof** (tie to Post 1).
-- **Gaps:** keep current; **add** pairs=2024-25 vs lineups=2025-26 note.
+- **Takeaway:** talent dominates & saturates; rim protection is the one lever; **spacing is a null — NOP's elite spacer (Murphy) is the live proof** (tie to Post 1). **Capstone (from Analysis D):** even the *threshold* version of fit is engineered away — **99% of leaguewide lineups have a creator, 98% have a spacer**, so the "no-spacing" disaster barely exists; coaches pre-empt the cliffs. Reframes ORL/NOP's problem as a *ceiling*, not a broken lineup.
+- **Gaps:** keep current; **add** pairs=2024-25 vs lineups=2025-26 note; role flags are tunable heuristics.
 
-### Post 3 — "The role you're missing" *(role coverage — reorder CONFIRMED)*
-- **Q:** Beyond talent, do lineups *missing a role entirely* (no primary creator / no spacer / no rim protector) underperform? A threshold question the gradient work (spacing regressions, pairwise redundancy) couldn't reach.
-- **Data:** leaguewide lineups (`stg_lineups_league` 2025-26 + `load_5man_features_2024()`) × leaguewide archetype flags from the new `mart_player_league` (Analysis D). `is_rim_protector` leaguewide is a BLK%+size proxy (CTG rim on/off is ORL/NOP-only).
-- **Method:** per lineup, count role coverage (≥1 creator / spacer / rim protector); regress net on coverage gaps controlling for talent (minutes-weighted, team-clustered).
-- **Takeaway (works either way):** if gaps hurt beyond talent → the strongest surviving fit lever, and it closes Post 1 (Orlando's duplicate build = a spacing-coverage hole). If not → an honest null fully consistent with the thesis. Both publishable.
-- **Gaps:** `is_rim_protector` is a leaguewide proxy; role flags are tunable heuristics; role-coverage is itself range-restricted (coaches avoid the worst holes).
-- The opponent-archetype/matchups piece (old Post 3, already built) → **Post 6 spin-off.**
+### Post 3 — "Know your enemy" (opponent style + swing games) — REORDER REVERTED
+- **Q:** Do matchups / opponent style decide games — and do close games trace to fit?
+- **Data:** `mart_games_styled`, `load_games_rim`, `mart_team_style`.
+- **Method:** archetype clustering (fuzzy), process-vs-outcome regression, swing games + per-game rim resolution.
+- **Takeaway:** style = process not outcome; swing games mostly variance; the one real fit lever (rim protection) doesn't decide individual games either.
+- **Gaps:** 171 games, one season; per-game fit too small vs. single-game noise.
+- **Why reverted:** Analysis D (role coverage) came back a **NULL** (below) — a third consecutive fit-null made a poor standalone Post 3. D's punchline is folded into Post 2 as a capstone; the already-built matchups piece stays as Post 3 for variety.
 
 ### Post 4 — "The moves that matter"
 - **Q:** win projections + best fit-adjusted move.
@@ -112,7 +112,7 @@ spacing wasn't the answer).
 
 1. **A + B (Post 1)** — highest value, lowest effort (verified). **Do now, no pull.**
 2. **C (generalize beyond n=2) — DONE (2025-26), in Post 1.** 11 teams built around a ball-dominant non-shooter; complement builds over-perform talent (**+1.8 vs +0.6** net/100; shooters-vs-fit **r=+0.69**, → +0.53 without OKC; regression +1.3/spacer, p≈0.07). Framed (per decision) as a **small edge dwarfed by talent** — *consistent with Post 2, not a contradiction* (Post 2 = lineup-level spacing null; C = smaller roster-level echo, n=11, likely partly DPM-under-pricing-shooting). **The 2024-25 team pull doubles n (→~22) and would settle it.** Also emits the `mart_player_league` archetype flags **D reuses**.
-3. **D (role coverage — now Post 3)** — committed post; shares C's `mart_player_league` build; **works even as a null**. **Do alongside C.**
+3. **D (role coverage) — DONE: NULL.** 99% / 98% of leaguewide lineups already have a creator / spacer (coaches engineer away the cliffs); no threshold effect beyond talent, and the `is_rim_protector` proxy is null too (A2's continuous rim measure already found the one real lever). Folded into **Post 2** as the "why fit stays small" capstone — not a standalone post.
 4. **E (two-season style)** — Post 5 / Mosley; needs the historical pull. **Do for Post 5.**
 5. **F (Mosley portability)** — spec now (dimensions from `mart_team_style`), grade in-season; depends on E.
 
@@ -131,7 +131,7 @@ spacing wasn't the answer).
 ## Decisions (resolved)
 
 1. **Pull BOTH CTG and public** for historical team style. Public (BBref) powers the interactive companion; the CTG-rich variant stays under a **private** prefix for analysis/charts (aggregates credited "via Cleaning the Glass"). This keeps the licensing guardrail structural.
-2. **Post 3 = role coverage (D)**; opponent/matchups → Post 6 spin-off. Confirmed.
+2. **Post 3 = opponent/matchups** (reorder reverted — Analysis D came back null). D's range-restriction punchline folds into Post 2 as a capstone.
 
 ---
 

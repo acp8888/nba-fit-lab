@@ -674,6 +674,74 @@ def _(mo):
     return
 
 
+@app.cell
+def _(load_mart, pd, re, unicodedata):
+    # Role coverage: do lineups MISSING a whole role (creator / spacer) even exist? (capstone)
+    def p2d_norm(s):
+        s = (
+            unicodedata.normalize("NFKD", str(s))
+            .encode("ascii", "ignore")
+            .decode()
+            .lower()
+        )
+        return re.sub(r"\s+(jr\.?|sr\.?|ii|iii|iv)$", "", s.strip())
+
+    def p2d_flast(full):
+        p = p2d_norm(full).split()
+        return f"{p[0][0]}. {' '.join(p[1:])}" if len(p) > 1 else p2d_norm(full)
+
+    p2d_pl = load_mart("mart_player_league")
+    p2d_pl = p2d_pl[p2d_pl["season"] == 2026]
+    p2d_flag = {
+        (t, p2d_flast(n)): (bool(c), bool(s))
+        for t, n, c, s in zip(
+            p2d_pl.team, p2d_pl.player_name, p2d_pl.is_creator, p2d_pl.is_shooter
+        )
+    }
+    p2d_lf = load_mart("mart_lineup_features_league")
+    p2d_lf = p2d_lf[p2d_lf["n_covered"] == 5].dropna(subset=["talent_sum_dpm"]).copy()
+
+    def p2d_cover(row):
+        parts = [p2d_norm(x) for x in row["lineup_key"].split("|")]
+        return pd.Series(
+            {
+                "n_creators": sum(
+                    p2d_flag.get((row["team"], p), (False, False))[0] for p in parts
+                ),
+                "n_spacers": sum(
+                    p2d_flag.get((row["team"], p), (False, False))[1] for p in parts
+                ),
+                "matched": sum((row["team"], p) in p2d_flag for p in parts),
+            }
+        )
+
+    p2d_lf = pd.concat([p2d_lf, p2d_lf.apply(p2d_cover, axis=1)], axis=1)
+    p2d_lf = p2d_lf[p2d_lf["matched"] == 5]
+    p2d_n = len(p2d_lf)
+    p2d_creator = 1 - (p2d_lf["n_creators"] == 0).mean()
+    p2d_spacer = 1 - (p2d_lf["n_spacers"] == 0).mean()
+    return p2d_creator, p2d_n, p2d_spacer
+
+
+@app.cell
+def _(mo, p2d_creator, p2d_n, p2d_spacer):
+    mo.md(f"""
+    **One more nail — why fit stays small even in principle.** The strongest surviving fit
+    idea is a *threshold*: a lineup with **no** creator, or **no** spacing at all, should
+    crater. We flagged every player's role and checked. Across {p2d_n} leaguewide lineups,
+    **{p2d_creator:.0%} have a creator and {p2d_spacer:.0%} have a spacer** — the "no-spacing"
+    lineup that should fail *barely exists* (missing a role in ~1–2% of lineups), and where it
+    does, net rating doesn't move beyond talent.
+
+    > 🏀 **The capstone:** the fit cliffs are real on paper but not on NBA floors — **coaches
+    > engineer them away before they ever play.** That's the deepest reason fit stays small:
+    > not that redundancy is harmless, but that the *disasters never get deployed*. Which reframes
+    > Orlando's and New Orleans's real problem — not a broken lineup on any given night, but a
+    > **ceiling their rosters can't clear.**
+    """)
+    return
+
+
 # ============================ POST 3 =========================================
 @app.cell
 def _(mo):
@@ -1035,6 +1103,9 @@ def _(mo):
 
 @app.cell
 def _():
+    import re
+    import unicodedata
+
     import altair as alt
     import marimo as mo
     import numpy as np
@@ -1058,8 +1129,10 @@ def _():
         np,
         pd,
         q,
+        re,
         silhouette_score,
         sm,
+        unicodedata,
     )
 
 
