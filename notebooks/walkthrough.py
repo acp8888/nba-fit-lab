@@ -21,10 +21,12 @@ def _(mo):
     | **4** | *The moves that matter* | How many wins is this roster, and what move helps most? |
     | **5** | *Same coach, new roster* | Are the predictions coming true? (in-season) |
 
-    > 🏀 **The one-sentence story:** talent decides almost everything — but it
-    > **saturates** (each added star helps less), and the only "fit" that reliably helps
-    > on top of talent is **rim protection**. Spacing and "these two can't play together"
-    > mostly vanish once you account for how good the players already are.
+    > 🏀 **The one-sentence story:** Orlando and New Orleans built around the *same* kind of
+    > star — a ball-dominant non-shooter — and made **opposite bets** on what to add; **both
+    > failed.** The reason runs through every post: talent decides almost everything and even
+    > **saturates** (each added star helps less); the only "fit" that reliably helps on top is
+    > **rim protection**; and "add spacing" / "these two can't play together" mostly vanish once
+    > you account for how good the players already are.
     """)
     return
 
@@ -329,9 +331,10 @@ def _(mo):
     ---
     # Post 2 · *Fit, quantified*
 
-    **The question.** Once you account for how good the five players are, does "fit"
-    (rim protection, size, spacing, ball-movement) actually move the scoreboard — and can
-    you just keep stacking talent?
+    **The question.** Post 1 showed *both* teams' bets fail — including New Orleans's
+    *add-a-spacer* bet. So was spacing ever the answer? Once you account for how good the five
+    players are, does **any** "fit" ingredient (rim protection, size, spacing, ball-movement)
+    actually move the scoreboard — and can you just keep stacking talent?
 
     **The data.** Every team's ~top-20 most-used 5-man lineups, **both** 2024-25 and
     2025-26 (`mart_lineup_features_league` + a held-out rebuild), plus 556 two-man pairs
@@ -1120,20 +1123,25 @@ def _(mo):
     ---
     # Post 5 · *Same coach, new roster* — the in-season tracker *(coming)*
 
-    **The question.** Are Posts 1–4's predictions coming true? If fit is mostly *coaching*,
-    the new staffs lift New Orleans and Orlando; if it's mostly *roster*, both repeat.
+    **The question.** Jamahl Mosley coached Orlando's **duplicate** build and now inherits
+    New Orleans's **complement** build — the cleanest natural experiment in the league. Do a
+    coach's fingerprints travel? If his signature is *coaching*, New Orleans's **style** should
+    shift toward his Orlando's on specific dimensions within ~20 games; if it's *roster*, it
+    won't move.
 
-    **The data (coming).** Weekly in-season refreshes of the same sources, as real games
-    accumulate.
+    **The data (coming).** Weekly in-season refreshes, plus a two-season *style* trace of
+    Mosley's Orlando to name the dimensions (pace, transition rate, shot mix) as falsifiable
+    thresholds *before* the games are played.
 
-    **The method.** Track each team's **rim protection** trend first (Post 2 says that's the
-    one lever that pays), plus their fit metrics under the new staff, and grade Post 1's bet.
+    **The method.** State the named predictions now, then grade New Orleans's style drift and
+    each team's **rim-protection** trend (Post 2's one real lever) as games arrive.
 
-    > 🏀 **Takeaway:** this is the payoff — *"here's what we predicted, and here's whether
-    > it's coming true."* Not built yet; it needs a few weeks of new games.
+    > 🏀 **Takeaway:** this is the payoff — Posts 1–4 set the bets (both rosters project up
+    > modestly; fit is a rounding error; rim protection is the lever), and Post 5 grades them
+    > live. Not built yet; it needs the style trace plus a few weeks of games.
 
-    **The gaps.** No data yet; and with fit this small, expect the signal to be a slow
-    aggregate trend, not a dramatic week-to-week swing.
+    **The gaps.** No in-season data yet, and the 2-season style fingerprint is still to build;
+    with fit this small, expect a slow aggregate drift, not a dramatic week-to-week swing.
     """)
     return
 
@@ -1144,10 +1152,15 @@ def _(mo):
     ---
     ## The whole series, in one breath
 
-    Talent decides almost everything — and even talent **saturates**, so you can't just
-    stack stars. The one "fit" that reliably helps on top is **rim protection**; spacing,
-    matchups, and "these two can't play together" are real to *watch* but small on the
-    *scoreboard*. Fit is worth pricing — it is not worth mistaking for talent.
+    Two teams built around the same non-shooting star made **opposite bets** — Orlando
+    *duplicated* it, New Orleans *complemented* it — and **both failed.** The reason runs
+    through every post: talent decides almost everything, and even talent **saturates**, so you
+    can't just stack stars. The one "fit" that reliably helps on top is **rim protection**;
+    spacing, redundancy, and matchups are real to *watch* but small on the *scoreboard* — and
+    the true disasters (a lineup with *no* spacing at all) never even get deployed, so it's a
+    **ceiling**, not a broken lineup. Moves are worth their talent, not a fit premium. Which
+    sets up the live test: the same coach, moving between the two builds. **Fit is worth
+    pricing — it is not worth mistaking for talent.**
 
     *Reproducible: export the CSVs → `make ingest transform` → open this notebook.
     Sources: Basketball-Reference, PBPStats, DARKO, Cleaning the Glass.*
