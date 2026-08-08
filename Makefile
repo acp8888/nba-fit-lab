@@ -1,4 +1,4 @@
-.PHONY: ingest transform lab tour a2 a3 a4 walkthrough
+.PHONY: ingest transform notebook
 
 ingest:
 	uv run nba-fit-ingest bbref data/local/raw/bbref/2026-07-08/*.csv
@@ -14,20 +14,6 @@ ingest:
 transform:
 	uv run python transform/run.py
 
-lab:
-	uv run marimo edit notebooks/10_lineup_explorer.py
-
-tour:
-	uv run marimo edit notebooks/00_tour.py
-
-a2:
-	uv run marimo edit notebooks/20_a2_scarcity.py
-
-a3:
-	uv run marimo edit notebooks/30_a3_opponents.py
-
-a4:
-	uv run marimo edit notebooks/40_a4_projection.py
-
-walkthrough:
-	uv run marimo edit notebooks/50_data_walkthrough.py
+# The single analysis notebook — a per-blog-post walkthrough of the whole series.
+notebook:
+	uv run marimo edit notebooks/walkthrough.py
