@@ -219,6 +219,27 @@ def load_team_seasons():
     return _team_seasons
 
 
+# --- 2026-27 projected rosters (for Post 4 forward-looking) -------------------
+# DARKO's preseason 2026-27 leaderboard: each player on his DARKO-assigned team with a
+# projected DPM + minutes. CAVEATS: preseason DPM is integer-rounded and heavily regressed
+# to the mean for mid-tier players; team assignments are DARKO's (some July 2026 moves —
+# e.g. Vučević -> ORL — aren't reflected, so this is the RETURNING core; layer known moves on).
+_roster27 = None
+
+
+def load_roster_2027():
+    """2026-27 projected rosters from DARKO: (team_name, player, dpm, mpg)."""
+    global _roster27
+    if _roster27 is not None:
+        return _roster27
+    con = connect()
+    _roster27 = con.execute(f"""
+        select "Team" team_name, "Player" player,
+               cast(regexp_replace("DPM", '^\\+', '') as double) dpm, "MPG" mpg
+        from read_csv_auto('{RAW}/darko/2026-08-07/darko-dpm-leaderboard.csv')""").df()
+    return _roster27
+
+
 # --- Lineage access (for the data-walkthrough notebook only) -----------------
 # The house pattern says notebooks read marts, not raw/staging. The walkthrough
 # is the deliberate exception: it explains raw -> staging -> mart, so it needs to

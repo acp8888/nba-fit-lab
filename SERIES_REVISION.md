@@ -93,12 +93,12 @@ spacing wasn't the answer).
 - **Gaps:** 171 games, one season; per-game fit too small vs. single-game noise.
 - **Why reverted:** Analysis D (role coverage) came back a **NULL** (below) — a third consecutive fit-null made a poor standalone Post 3. D's punchline is folded into Post 2 as a capstone; the already-built matchups piece stays as Post 3 for variety.
 
-### Post 4 — "The moves that matter"
-- **Q:** win projections + best fit-adjusted move.
-- **Data:** `mart_roster` (**2025-26 teams** — forward-looking 2026-27 needs updated rosters/DARKO; gap below).
-- **Method:** DPM→pythagorean→simulation + marginal-value ranking.
-- **Takeaway:** talent upgrade beats fit tweak; test "2nd shooter moves ORL most", "trading Murphy costs NOP more than his DPM."
-- **Gaps:** projection uses last season's rosters.
+### Post 4 — "The moves that matter" — DONE (forward-looking)
+- **Q:** 2026-27 win projections as constructed + does a move beat a fit tweak?
+- **Data:** `mart_roster` (2025-26 backtest) + `load_roster_2027()` (DARKO 2026-27 preseason).
+- **Method:** DPM→pythagorean→Monte-Carlo; backtest then project; illustrate a +2-DPM-starter add.
+- **Result:** ORL proj **46** wins (38–53), NOP **32** (25–38) — modest step up on returning cores; a +2-DPM starter ≈ **+2 wins**, fit tweak ≈ 0. **The old "Murphy worth *more* than his DPM" hypothesis is REFUTED by our own series** — moves are worth ~their talent, no fit premium.
+- **Gaps:** preseason DPM integer/regressed (mid-tier bunched); DARKO rosters miss some July moves (Vučević→ORL not booked); read ranges/direction, not exact totals; mid-season re-pull sharpens.
 
 ### Post 5 — "Same coach, new roster" *(Mosley test, named predictions)*
 - **Q:** Mosley coached the duplicate build, inherits the complement build — does his style travel?

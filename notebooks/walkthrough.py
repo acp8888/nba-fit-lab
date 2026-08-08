@@ -971,15 +971,16 @@ def _(mo):
     ---
     # Post 4 · *The moves that matter*
 
-    **The question.** How many wins does each roster project to — and does a "fit" tweak
-    move the needle more than a straight talent upgrade?
+    **The question.** Projecting forward to **2026-27**: how many wins does each roster
+    project to as currently built — and does a "fit" tweak beat a straight talent upgrade?
 
-    **The data.** Each team's full roster with per-player **DPM** and projected minutes
-    (`mart_roster`) — the deep bench included, because that's what drags a bad team.
+    **The data.** For the engine *backtest*, last year's rosters (`mart_roster`, 2025-26);
+    for the *forward* projection, DARKO's **2026-27** preseason DPM + minutes
+    (`load_roster_2027`).
 
-    **The method.** Team net rating = `5 × minutes-weighted mean DPM`, then **Pythagorean**
-    wins (outscore people by more → win more, fit to NBA history). Then a Monte-Carlo
-    simulation of the season to turn uncertain minutes/growth into a *range* of wins.
+    **The method.** Team net = `5 × minutes-weighted DPM` → **Pythagorean** wins → a
+    Monte-Carlo season for a *range*, not a point. First backtest the engine on 2025-26
+    (does it land near actual wins?), then project 2026-27.
     """)
     return
 
@@ -1040,17 +1041,74 @@ def _(load_mart, mo, np, pd, q):
 
 
 @app.cell
-def _(mo):
-    mo.md("""
-    **The takeaways.**
+def _(load_roster_2027, mo, np, pd):
+    p4f_r = load_roster_2027()
 
-    > 🏀 Trust the **range**, not a single projection. And priced through this engine, a
-    > genuine **talent** upgrade moves the win range far more than any "fit" tweak — which
-    > is Post 2 again: fit is the small correction, talent is the story.
+    def p4f_pyth(net, exp=13.91, ppg=115.0):
+        pf, pa = ppg + net / 2, ppg - net / 2
+        return 82 * pf**exp / (pf**exp + pa**exp)
 
-    **The gaps.** These are last season's rosters and minutes; a real forecast needs *next*
-    season's (injuries, trades, a young player's leap) — which is exactly why the output is
-    a distribution, not a point.
+    def p4f_sim(name):
+        r = p4f_r[p4f_r["team_name"] == name]
+        dpm, w = r["dpm"].to_numpy(float), r["mpg"].to_numpy(float)
+        rng = np.random.default_rng(0)
+        dd = dpm + rng.normal(0, 1.2, (4000, len(dpm)))
+        md = w * np.exp(rng.normal(0, 0.15, (4000, len(w))))
+        return np.percentile(p4f_pyth(5 * (dd * md).sum(1) / md.sum(1)), [5, 50, 95])
+
+    p4f_rows = []
+    for p4f_name, abbr, last in [
+        ("Orlando Magic", "ORL", 45),
+        ("New Orleans Pelicans", "NOP", 26),
+    ]:
+        p4f_lo, p4f_med, p4f_hi = p4f_sim(p4f_name)
+        p4f_rows.append(
+            {
+                "team": abbr,
+                "2025-26 actual": last,
+                "2026-27 proj (median)": round(p4f_med),
+                "90% range": f"{round(p4f_lo)}–{round(p4f_hi)}",
+            }
+        )
+    mo.vstack(
+        [
+            mo.md("**Forward projection — 2026-27 (returning cores):**"),
+            mo.ui.table(pd.DataFrame(p4f_rows), selection=None),
+            mo.md(
+                "Both project a modest step up — Orlando into the mid-40s, New Orleans into the "
+                "low-30s. *Caveat:* these are DARKO's **preseason** projections (integer-rounded, "
+                "mid-tier players regressed toward average) on the returning cores; DARKO hasn't "
+                "booked every July move (Vučević→Orlando isn't in yet), so treat specific known "
+                "signings as add-ons below."
+            ),
+        ]
+    )
+    return p4f_pyth, p4f_r
+
+
+@app.cell
+def _(mo, np, p4f_pyth, p4f_r):
+    def p4m_wins(name, extra=None):
+        r = p4f_r[p4f_r["team_name"] == name]
+        dpm = np.append(r["dpm"].to_numpy(float), [extra[0]] if extra else [])
+        mpg = np.append(r["mpg"].to_numpy(float), [extra[1]] if extra else [])
+        return p4f_pyth(5 * (dpm * mpg).sum() / mpg.sum())
+
+    p4m_base = p4m_wins("Orlando Magic")
+    p4m_add = p4m_wins("Orlando Magic", extra=(2.0, 25))  # a +2-DPM, 25-mpg starter
+    mo.md(f"""
+    **What actually moves the needle?** Drop one **+2-DPM starter** (25 mpg) into Orlando and
+    the engine gives **{p4m_base:.0f} → {p4m_add:.0f} wins** — a real, talent-sized jump. A
+    *fit* tweak (better spacing, a cleaner rotation) adds **~0** on top, per Posts 1–2.
+
+    > 🏀 **The takeaway:** moves are worth **about the talent they add** — no hidden fit
+    > multiplier. The old take that "trading your lone spacer costs *more* than his DPM" is
+    > exactly the fit premium our series didn't find. Talent in, talent out; fit is a
+    > rounding error. The honest advice is boring: *get better players.*
+
+    **The gaps.** Preseason DPM is integer-rounded and regressed (mid-tier bunches near
+    average), and DARKO's rosters miss some offseason moves — so read the *ranges* and the
+    *direction*, not the exact win totals. A mid-season re-pull sharpens all of it.
     """)
     return
 
@@ -1115,6 +1173,7 @@ def _():
         load_5man_features_2024,
         load_games_rim,
         load_mart,
+        load_roster_2027,
         load_team_seasons,
         q,
     )
@@ -1127,6 +1186,7 @@ def _():
         load_5man_features_2024,
         load_games_rim,
         load_mart,
+        load_roster_2027,
         load_team_seasons,
         mo,
         np,
