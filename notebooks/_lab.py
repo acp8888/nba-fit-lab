@@ -170,6 +170,55 @@ def load_games_rim():
     return _games_rim
 
 
+# --- Per (season, team) net rating + talent (for the pooled Analysis C) -------
+# Actual net = BBref team NRtg; talent = 5 x minutes-weighted DARKO DPM. Both seasons,
+# from raw (2024-25 team ratings are a separate pull). Lean by design — the CTG-rich
+# 2-season mart_team_style is a bigger remap (2024-25 CTG is a different raw format).
+_team_seasons = None
+
+
+def load_team_seasons():
+    """Per (season, team): actual net rating + talent (5x wmean DPM), 2024-25 and 2025-26."""
+    global _team_seasons
+    if _team_seasons is not None:
+        return _team_seasons
+    con = connect()
+    con.execute("""create or replace temp table tmap as select * from (values
+     ('Atlanta Hawks','ATL'),('Boston Celtics','BOS'),('Brooklyn Nets','BRK'),('Charlotte Hornets','CHO'),
+     ('Chicago Bulls','CHI'),('Cleveland Cavaliers','CLE'),('Dallas Mavericks','DAL'),('Denver Nuggets','DEN'),
+     ('Detroit Pistons','DET'),('Golden State Warriors','GSW'),('Houston Rockets','HOU'),('Indiana Pacers','IND'),
+     ('Los Angeles Clippers','LAC'),('Los Angeles Lakers','LAL'),('Memphis Grizzlies','MEM'),('Miami Heat','MIA'),
+     ('Milwaukee Bucks','MIL'),('Minnesota Timberwolves','MIN'),('New Orleans Pelicans','NOP'),('New York Knicks','NYK'),
+     ('Oklahoma City Thunder','OKC'),('Orlando Magic','ORL'),('Philadelphia 76ers','PHI'),('Phoenix Suns','PHO'),
+     ('Portland Trail Blazers','POR'),('Sacramento Kings','SAC'),('San Antonio Spurs','SAS'),('Toronto Raptors','TOR'),
+     ('Utah Jazz','UTA'),('Washington Wizards','WAS')) as t(full_name, bbref)""")
+
+    def block(season, ratings_csv, darko_csv):
+        return f"""
+          select {season} as season, tm.bbref as team, r.team_name, r.actual, t.talent
+          from (select "Team" team_name, cast("NRtg" as double) actual
+                from read_csv_auto('{RAW}/{ratings_csv}')) r
+          join (select "Team" team_name,
+                  5*sum(cast(regexp_replace("DPM",'^\\+','') as double)*"MPG")/sum("MPG") talent
+                from read_csv_auto('{RAW}/{darko_csv}') group by "Team") t using (team_name)
+          join tmap tm on tm.full_name = r.team_name"""
+
+    _team_seasons = con.execute(
+        block(
+            2026,
+            "bbref/2026-07-08/league_team_ratings.csv",
+            "darko/2026-07-08/darko-dpm-leaderboard.csv",
+        )
+        + " union all "
+        + block(
+            2025,
+            "bbref/2026-08-07/league_team_ratings_2024-25.csv",
+            "darko/2025-07-08/darko-dpm-leaderboard.csv",
+        )
+    ).df()
+    return _team_seasons
+
+
 # --- Lineage access (for the data-walkthrough notebook only) -----------------
 # The house pattern says notebooks read marts, not raw/staging. The walkthrough
 # is the deliberate exception: it explains raw -> staging -> mart, so it needs to

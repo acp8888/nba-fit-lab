@@ -219,25 +219,13 @@ def _(mo):
 
 
 @app.cell
-def _(load_mart, pd):
-    p1c_pl = load_mart("mart_player_league")
-    p1c_pl = p1c_pl[p1c_pl["season"] == 2026]
-    p1c_rost = load_mart("mart_roster")
-    p1c_style = load_mart("mart_team_style")
-    p1c_tal = (
-        p1c_rost.groupby(["team", "team_name"])
-        .apply(lambda x: 5 * (x.dpm * x.mpg).sum() / x.mpg.sum(), include_groups=False)
-        .reset_index(name="talent")
-        .merge(p1c_style[["team_name", "net_pts_poss"]], on="team_name")
-        .rename(columns={"net_pts_poss": "actual"})
-    )
-    p1c_tal["fit"] = p1c_tal["actual"] - p1c_tal["talent"]
+def _(load_mart, load_team_seasons, pd):
+    p1c_pl = load_mart("mart_player_league")  # both seasons
 
     def p1c_agg(g):
         star = g.loc[g["usg"].idxmax()]
         return pd.Series(
             {
-                "star": star["player_name"],
                 "star_bdn": bool(star["is_ball_dominant_nonshooter"]),
                 "n_bdn": int(g["is_ball_dominant_nonshooter"].sum()),
                 "n_spacers": int(g["is_shooter"].sum()),
@@ -245,12 +233,13 @@ def _(load_mart, pd):
         )
 
     p1c = (
-        p1c_pl.groupby("team")
+        p1c_pl.groupby(["season", "team"])
         .apply(p1c_agg, include_groups=False)
         .reset_index()
-        .merge(p1c_tal[["team", "talent", "actual", "fit"]], on="team")
+        .merge(load_team_seasons(), on=["season", "team"])
     )
     p1c = p1c[p1c["star_bdn"]].copy()
+    p1c["fit"] = p1c["actual"] - p1c["talent"]
     p1c["build"] = p1c["n_bdn"].apply(
         lambda n: (
             "duplicate (2+ non-shooting stars)"
@@ -258,8 +247,10 @@ def _(load_mart, pd):
             else "complement (1 star + shooters)"
         )
     )
-    p1c_r = p1c["n_spacers"].corr(p1c["fit"])
-    return p1c, p1c_r
+    p1c_r = p1c["n_bdn"].corr(p1c["fit"])
+    p1c_comp = p1c[p1c["n_bdn"] == 1]["fit"].mean()
+    p1c_dup = p1c[p1c["n_bdn"] >= 2]["fit"].mean()
+    return p1c, p1c_comp, p1c_dup, p1c_r
 
 
 @app.cell
@@ -271,19 +262,24 @@ def _(alt, p1c, pd):
     )
     p1c_pts = (
         alt.Chart(p1c)
-        .mark_circle(size=140, opacity=0.85)
+        .mark_circle(size=130, opacity=0.8)
         .encode(
-            x=alt.X(
-                "n_spacers:Q",
-                title="shooters on the roster (spacing around the star) →",
-            ),
+            x=alt.X("n_spacers:Q", title="shooters on the roster →"),
             y=alt.Y("fit:Q", title="over / under-performance vs. talent (net/100)"),
             color=alt.Color(
-                "build:N", scale=alt.Scale(range=["#C0453F", "#0A7CD6"]), title="build"
+                "build:N",
+                scale=alt.Scale(
+                    domain=[
+                        "complement (1 star + shooters)",
+                        "duplicate (2+ non-shooting stars)",
+                    ],
+                    range=["#0A7CD6", "#C0453F"],
+                ),
+                title="build",
             ),
             tooltip=[
                 "team",
-                "star",
+                "season",
                 "n_bdn",
                 "n_spacers",
                 alt.Tooltip("fit:Q", format="+.1f"),
@@ -296,7 +292,7 @@ def _(alt, p1c, pd):
         .encode(x="n_spacers:Q", y="fit:Q", text="team:N")
     )
     (p1c_z + p1c_pts + p1c_lab).properties(
-        title="More spacing → over-performing talent: a weak, talent-dwarfed trend (n=11)",
+        title="Complement builds (blue) over-perform; duplicates (red) under-perform — weak, n=20",
         width=470,
         height=300,
     )
@@ -304,24 +300,24 @@ def _(alt, p1c, pd):
 
 
 @app.cell
-def _(mo, p1c, p1c_r):
-    p1c_dup = p1c[p1c["n_bdn"] >= 2]["fit"].mean()
-    p1c_comp = p1c[p1c["n_bdn"] == 1]["fit"].mean()
+def _(mo, p1c, p1c_comp, p1c_dup, p1c_r):
     mo.md(f"""
-    {len(p1c)} of 30 teams (2025-26) are built around a ball-dominant non-shooter. Complement
-    builds over-perform their talent more than duplicate builds (**{p1c_comp:+.1f}** vs.
-    **{p1c_dup:+.1f}** net/100; shooters-vs-over-performance r = **{p1c_r:+.2f}**).
+    Pooling **both seasons** ({len(p1c)} teams built around a ball-dominant non-shooter):
+    teams that **duplicated** the archetype (2+ non-shooting stars) under-performed their talent
+    (**{p1c_dup:+.1f}** net/100), while **complement** builds over-performed (**{p1c_comp:+.1f}**)
+    — a ~{abs(p1c_comp - p1c_dup):.0f}-point gap in the right direction (correlation of
+    duplication with over-performance, r = **{p1c_r:+.2f}**).
 
-    > 🏀 **In plain English:** surrounding a non-shooting star with shooters is a **small,
-    > real edge** — but a *fragile* one (only 11 teams, and it leans on Oklahoma City), and
-    > **talent dwarfs it** (talent alone explains ~85% of the scoreboard; the spacing edge is
-    > ~1 net per shooter, on the edge of significance). This is **consistent with Post 2, not a
-    > contradiction:** Post 2 shows spacing doesn't move a *given lineup*; this is the smaller
-    > roster-level echo. And it's why the bet still failed both times — **Orlando skipped even
-    > this edge by duplicating; New Orleans took it but had bottom-five talent.**
+    > 🏀 **In plain English:** *duplicating* your non-shooting star tracks under-performing —
+    > directionally exactly Orlando's problem. **But it's a weak, small-sample signal** (n = 20,
+    > not statistically significant), and **talent dwarfs it.** (The simpler "just count the
+    > shooters" version washed out entirely once we added 2024-25 — it was small-sample noise.)
+    > This is *consistent with Post 2, not a contradiction:* fit is a small edge, and even this
+    > roster-level version is faint. It's why the bet failed both ways — **Orlando duplicated;
+    > New Orleans complemented but had bottom-five talent.**
 
-    **The gaps.** n = 11 and marginal (p ≈ 0.07); DARKO already prices *some* shooting. The
-    2024-25 team pull roughly doubles the sample and would settle whether the edge is real.
+    **The gaps.** n = 20 and underpowered (p ≈ 0.2); net is BBref's, talent is integer-rounded
+    DPM. The full Mosley-tenure team pull would firm it up.
     """)
     return
 
@@ -1115,7 +1111,13 @@ def _():
     from sklearn.metrics import adjusted_rand_score, silhouette_score
     from sklearn.preprocessing import StandardScaler
 
-    from _lab import load_5man_features_2024, load_games_rim, load_mart, q
+    from _lab import (
+        load_5man_features_2024,
+        load_games_rim,
+        load_mart,
+        load_team_seasons,
+        q,
+    )
 
     return (
         KMeans,
@@ -1125,6 +1127,7 @@ def _():
         load_5man_features_2024,
         load_games_rim,
         load_mart,
+        load_team_seasons,
         mo,
         np,
         pd,
