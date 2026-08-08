@@ -79,16 +79,32 @@ ht as (
          "Team", cast(split_part("Ht",'-',1) as int)*12 + cast(split_part("Ht",'-',2) as int)
   from read_csv_auto('s3://nba-fit-lab/raw/bbref/2026-07-08/league_player_heights.csv')
 ),
+rimf as (
+  -- per-player at-rim shooting (PBPStats): rim_freq = share of a player's shots at the rim
+  -- ("lives at the rim"); rim_acc = FG% there. Team codes standard (BKN/CHA/PHX -> BRK/CHO/PHO).
+  select 2025 as season,
+         regexp_replace(lower(strip_accents("Name")), '\s+(jr\.?|sr\.?|ii|iii|iv)$', '') as fold,
+         case "TeamAbbreviation" when 'BKN' then 'BRK' when 'CHA' then 'CHO' when 'PHX' then 'PHO' else "TeamAbbreviation" end as team,
+         "AtRimFrequency" as rim_freq, "AtRimAccuracy" as rim_acc
+  from read_csv_auto('s3://nba-fit-lab/raw/pbpstats/2026-08-07/league_player_shotdist_2024-25.csv')
+  union all
+  select 2026,
+         regexp_replace(lower(strip_accents("Name")), '\s+(jr\.?|sr\.?|ii|iii|iv)$', ''),
+         case "TeamAbbreviation" when 'BKN' then 'BRK' when 'CHA' then 'CHO' when 'PHX' then 'PHO' else "TeamAbbreviation" end,
+         "AtRimFrequency", "AtRimAccuracy"
+  from read_csv_auto('s3://nba-fit-lab/raw/pbpstats/2026-08-07/league_player_shotdist_2025-26.csv')
+),
 base as (
   select a.season, a.team, a.player_name, a.mp,
          a.usg, a.three_pa_rate, a.ast_pct, a.ts_pct, a.blk_pct,
          a.ast_pct / nullif(a.usg, 0) as ast_to_usg,
          coalesce(st.cs_gravity, 0) as cs_gravity,
-         dk.dpm, ht.height_in
+         dk.dpm, ht.height_in, rf.rim_freq, rf.rim_acc
   from adv a
   left join st on st.season = a.season and st.fold = a.fold and st.team = a.team
   left join dk on dk.season = a.season and dk.fold = a.fold and dk.team = a.team
   left join ht on ht.season = a.season and ht.fold = a.fold and ht.team = a.team
+  left join rimf rf on rf.season = a.season and rf.fold = a.fold and rf.team = a.team
 ),
 pct as (
   select *,
@@ -98,7 +114,8 @@ pct as (
     round(100 * percent_rank() over (partition by season order by ast_pct))       as ast_pctl,
     round(100 * percent_rank() over (partition by season order by ts_pct))        as ts_pctl,
     round(100 * percent_rank() over (partition by season order by blk_pct))       as blk_pctl,
-    round(100 * percent_rank() over (partition by season order by dpm))           as dpm_pctl
+    round(100 * percent_rank() over (partition by season order by dpm))           as dpm_pctl,
+    round(100 * percent_rank() over (partition by season order by rim_freq))      as rim_freq_pctl
   from base
 )
 select
@@ -106,7 +123,8 @@ select
   round(usg,1) usg, round(three_pa_rate,3) three_pa_rate, round(ast_pct,1) ast_pct,
   round(ts_pct,3) ts_pct, round(blk_pct,1) blk_pct, round(ast_to_usg,2) ast_to_usg,
   round(cs_gravity,2) cs_gravity, dpm, height_in,
-  usg_pctl, tpar_pctl, csg_pctl, ast_pctl, ts_pctl, blk_pctl, dpm_pctl,
+  round(rim_freq,3) rim_freq, round(rim_acc,3) rim_acc,
+  usg_pctl, tpar_pctl, csg_pctl, ast_pctl, ts_pctl, blk_pctl, dpm_pctl, rim_freq_pctl,
   (usg_pctl >= 80 and tpar_pctl <= 40 and csg_pctl <= 40)  as is_ball_dominant_nonshooter,
   (csg_pctl >= 60)                                         as is_shooter,
   (usg >= 24 or ast_to_usg >= 1.15)                        as is_creator,
@@ -121,6 +139,9 @@ from pct
 -- percentiles are within [0,100]
 -- ASSERT == 0: SELECT count(*) FROM mart_player_league WHERE usg_pctl NOT BETWEEN 0 AND 100
 -- ASSERT == 0: SELECT count(*) FROM mart_player_league WHERE csg_pctl NOT BETWEEN 0 AND 100
+-- ASSERT == 0: SELECT count(*) FROM mart_player_league WHERE rim_freq_pctl NOT BETWEEN 0 AND 100
+-- "lives at the rim" data present for the stars (Zion attacks the rim ~2x Banchero)
+-- ASSERT == 0: SELECT count(*) FROM mart_player_league WHERE season=2026 AND player_name='Zion Williamson' AND rim_freq IS NULL
 -- sanity: the two stars are flagged ball-dominant non-shooters; the elite spacer is not
 -- ASSERT == 1: SELECT count(*) FROM mart_player_league WHERE season=2026 AND player_name='Paolo Banchero' AND is_ball_dominant_nonshooter
 -- ASSERT == 1: SELECT count(*) FROM mart_player_league WHERE season=2026 AND player_name='Zion Williamson' AND is_ball_dominant_nonshooter
