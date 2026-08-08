@@ -82,8 +82,8 @@ def _(mo):
     Orlando **duplicated** the archetype; New Orleans **complemented** it. Did either work?
 
     **The data.** `mart_player_league` — every rotation player's traits as **league
-    percentiles**, both seasons (usage, 3-point rate, catch-&-shoot spacing, assist rate,
-    efficiency), built from public BBref + NBA.com + DARKO.
+    percentiles**, both seasons (usage, 3-point rate, catch-&-shoot spacing, **rim rate**,
+    assist rate, efficiency), built from public BBref + NBA.com + PBPStats + DARKO.
 
     **The method.** Compare the two stars' percentile fingerprints (are they really the
     same archetype?), then their supporting casts. One chart on the two axes that define
@@ -118,6 +118,7 @@ def _(load_mart, pd):
                 "usg_pctl",
                 "tpar_pctl",
                 "csg_pctl",
+                "rim_freq_pctl",
                 "ast_pctl",
                 "ts_pctl",
             ]
@@ -127,6 +128,7 @@ def _(load_mart, pd):
                 "usg_pctl": "usage",
                 "tpar_pctl": "3PA rate",
                 "csg_pctl": "C&S spacing",
+                "rim_freq_pctl": "rim rate",
                 "ast_pctl": "assist",
                 "ts_pctl": "efficiency",
             }
@@ -173,10 +175,12 @@ def _(mo, p1_fp):
             mo.ui.table(p1_fp, selection=None),
             mo.md("""
         - **The stars match.** Banchero and Williamson are both elite-usage (85–91st),
-          bottom-quintile 3-point volume, high-assist — ball-dominant non-shooting forwards.
+          bottom-quintile 3-point volume, high-assist, and **above-average rim-attackers**
+          (65th / 88th rim rate) — ball-dominant non-shooting forwards who live at the rim.
         - **The bets invert — at the wing.** Orlando's Wagner is a near-copy of Banchero
-          (89th usage, 21st 3PA rate, 33rd spacing) → a **duplicate**. New Orleans's Murphy
-          is the opposite (74th 3PA rate, **82nd spacing**) → a **complement**.
+          (89th usage, 21st 3PA rate, 33rd spacing, **63rd rim rate**) → a **duplicate**. New
+          Orleans's Murphy is the opposite (74th 3PA rate, **82nd spacing**, and a low 40th
+          rim rate — he spaces, he doesn't crash) → a **complement**.
         - **But it breaks at center.** Both teams run non-shooting bigs (Carter/Bitadze,
           Missi), and New Orleans's Queen is *himself* a high-usage non-shooter (66th usage,
           11th 3PA) — a second duplicate. New Orleans only *half*-complemented.
@@ -197,10 +201,10 @@ def _(mo):
     > in seven; New Orleans 26-56). That's the hook: *if adding spacing also failed, spacing
     > was never the answer* — which is exactly what Post 2 tests.
 
-    **The gaps.** The archetype is drawn from public percentiles — no leaguewide **rim
-    frequency** yet, so "lives at the rim" leans on ORL/NOP-only detail. It's **n=2** (the
-    leaguewide version — every team built around a ball-dominant non-shooter — is the next
-    build). And the pairwise "duplicate hurts" claim is a **2024-25** result (Post 2), a
+    **The gaps.** The archetype is drawn from public percentiles (usage, 3PA rate,
+    catch-&-shoot, **rim rate**, assist, efficiency) — a clean five-tool fingerprint, but
+    still a *box-score* one. It's **n=2** here (the leaguewide version is the generalization
+    below). And the pairwise "duplicate hurts" claim is a **2024-25** result (Post 2), a
     different season than these 2025-26 fingerprints.
     """)
     return

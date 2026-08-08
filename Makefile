@@ -10,6 +10,12 @@ ingest:
 	uv run nba-fit-ingest darko data/local/raw/darko/2025-07-08/*.csv
 	uv run nba-fit-ingest nbastats data/local/raw/nbastats/2025-07-08/*.csv
 	uv run nba-fit-ingest pbpstats data/local/raw/pbpstats/2025-07-08/*.csv
+	# 2026-08-07 batch: 2024-25 team stats (BBref + CTG), leaguewide per-player rim
+	# (PBPStats shot dist, both seasons), and 2026-27 DARKO projections
+	uv run nba-fit-ingest bbref data/local/raw/bbref/2026-08-07/*.csv
+	uv run nba-fit-ingest ctg data/local/raw/ctg/2026-08-07/*.csv
+	uv run nba-fit-ingest pbpstats data/local/raw/pbpstats/2026-08-07/*.csv
+	uv run nba-fit-ingest darko data/local/raw/darko/2026-08-07/*.csv
 
 transform:
 	uv run python transform/run.py
