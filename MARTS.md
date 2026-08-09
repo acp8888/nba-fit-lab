@@ -162,6 +162,11 @@ that isn't a published mart.
 - **`load_roster_2027()`** — **2026-27** projected rosters (team, player, dpm, mpg) from DARKO's
   preseason leaderboard. → Post 4 forward-looking. CAVEAT: preseason DPM is integer-rounded and
   regressed to the mean; DARKO's rosters miss some July moves (e.g. Vučević→ORL not booked).
+- **`load_transactions()`** — ORL+NOP **roster-construction history** (70 ORL / 71 NOP rows,
+  2019-2026) from hand-curated, source-cited CSVs at `data/local/manual/transactions_{orl,nop}.csv`
+  (public data, version-controlled). One row per player per side of a move; adds an `era` tag
+  (`pre_star`/`post_star`) relative to the star's draft (Zion 2019-06-20 / Paolo 2022-06-23). →
+  Post 1 construction timeline. NEUTRAL: `era` is timing, not inferred front-office intent.
 
 ---
 
