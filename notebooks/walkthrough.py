@@ -1173,6 +1173,85 @@ def _(mo):
 
 
 @app.cell
+def _(mo):
+    mo.md("""
+    ---
+    ## Appendix — for future analysts (what was done, why, and how to build on it)
+
+    *Orientation for anyone (human or model) picking this up. The posts above are the
+    distilled output; this is the methods + data map behind them.*
+
+    ### The project in one paragraph
+    A medallion-lite pipeline (hand-exported CSVs → S3 `raw/` → DuckDB `staging` → S3
+    `marts/` Parquet → these marimo notebooks) built to answer one question honestly: **is
+    NBA lineup "fit" worth anything on top of talent?** The answer, across every angle:
+    **talent dominates and *saturates*; the only fit lever that reliably pays is rim
+    protection; nearly everything else the discourse loves (spacing, redundancy, matchups,
+    role coverage) is a null once you control for how good the players are.**
+
+    ### The analyses, and what each found
+    - **Fit regression (Post 2).** Minutes-weighted WLS of lineup net rating on ΣDPM + fit
+      features, team-clustered SEs, 600 leaguewide 5-man lineups. Talent ≈17% of variance;
+      fit adds ~5 more. Only **rim protection (+)** and **size (−)** clear zero; **spacing is
+      null** even as catch-&-shoot gravity.
+    - **Talent saturation.** Net rating is **concave** in ΣDPM (talent², p<.001, both
+      seasons): a star's marginal value halves as you stack, ~0 at the top. Ceiling artifact
+      ruled out. *This is the real "diminishing returns."*
+    - **Held-out replication.** 2024-25 rebuild (`load_5man_features_2024`): talent + rim +
+      spacing-null replicate; **size is fragile** (significant only one season).
+    - **Pairwise WOWY (`mart_pair_synergy`, 2024-25).** 556 pairs; trait redundancy
+      (two ball-handlers, redundant spacing) is **null** — only interior rim/size pays.
+    - **Role coverage (Post 2 capstone).** 99% of lineups have a creator, 98% a spacer — the
+      "missing a role" cliff can't even be tested; coaches engineer it away → fit is a
+      *ceiling*, not a broken lineup.
+    - **Opponent style (Post 3).** Fuzzy k-means on `mart_team_style`; regressions on
+      `mart_games_styled` show opponent style bends **process** (shot mix, pace) not
+      **outcome** (margin = opponent quality + home court).
+    - **Swing games + per-game rim (Post 3).** Rim protection does **not** decide individual
+      games (p=0.60); swings are variance — fit's leverage is a faint aggregate tilt.
+    - **Projection engine (Post 4).** 5 × minutes-weighted DPM → Pythagorean → Monte-Carlo;
+      backtest on `mart_roster`, project 2026-27 via `load_roster_2027`. Moves worth ~their
+      DPM; **no fit premium.**
+    - **Archetype reframe (Post 1) + Analysis C.** `mart_player_league` (leaguewide per-player
+      percentiles + flags). Same star archetype, opposite bets (duplicate vs complement);
+      inversion holds at the **wing**, breaks at **center**; the leaguewide generalization
+      (pooled n=20) is directional but **underpowered** — a weak edge dwarfed by talent.
+
+    ### Why fit keeps coming up small (the mechanisms)
+    1. **Range restriction** — coaches pre-optimize; the catastrophic-redundancy lineups
+       never get minutes, so regressions on deployed lineups can't see the cliffs.
+    2. **Self-masking stats** — USG%/gravity are equilibrium outcomes that absorb redundancy
+       before you measure it.
+    3. **DPM launders it** — DARKO is estimated in balanced lineups, so ΣDPM assumes each
+       player keeps his value; the saturation is that leaking through in aggregate.
+
+    ### Data model
+    Full reference in **`MARTS.md`**. Quick map: team style (`mart_team_style`), games
+    (`mart_games_styled`), lineups (`mart_lineup_features_league` leaguewide /
+    `mart_lineup_features` ORL-NOP), pairs (`mart_pair_synergy`), players
+    (`mart_player_league` leaguewide / `mart_player_proj` ORL-NOP detail), rosters
+    (`mart_roster`); cross-season/forward via `_lab` loaders. **Season codes: 2025 = 2024-25,
+    2026 = 2025-26.** DPM is integer-rounded everywhere; marts are opponent-*averaged*.
+
+    ### Open threads (where new work goes)
+    - **Post 5 (Mosley tracker)** — needs in-season games; grade whether NOP's *style* drifts
+      toward Mosley's Orlando.
+    - **2-season `mart_team_style`** — not built; 2024-25 CTG is a rawer format needing its own
+      parser (9 files). Unlocks the Mosley fingerprint + firms Analysis C's outcome side.
+    - **Structural model for the extremes** — no observational regression (RAPM included)
+      reaches the unobserved redundancy cliffs; that needs a constrained-resource model.
+
+    ### How to extend the pipeline
+    New raw → `data/local/raw/<source>/<date>/`, then `make ingest` (idempotent, sha256). New
+    staging/mart → a numbered `transform/NN_*.sql` (CREATE-as-table + `-- ASSERT` comment
+    tests); `make transform` builds in order, writes `mart_*` per-season to S3, fails on any
+    assertion. Notebooks read marts via `_lab.load_mart` (or the documented raw loaders). Keep
+    CTG-derived data private (licensing).
+    """)
+    return
+
+
+@app.cell
 def _():
     import re
     import unicodedata
