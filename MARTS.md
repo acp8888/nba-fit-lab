@@ -8,8 +8,9 @@ duckdb.sql("select * from read_parquet('s3://nba-fit-lab/marts/<name>/**/*.parqu
 ```
 
 `season` is recovered from the hive partition path (`season=YYYY`; **2025 = the 2024-25
-season, 2026 = 2025-26**). **Season coverage is uneven:** `mart_player_league` spans **both**
-seasons; `mart_pair_synergy` is **2024-25 only**; every other mart is **2025-26 only**.
+season, 2026 = 2025-26**). **Season coverage is uneven:** `mart_player_league`,
+`mart_availability`, `mart_star_teammate_context`, and `mart_star_supporting_cast` span
+**both** seasons; `mart_pair_synergy` is **2024-25 only**; every other mart is **2025-26 only**.
 Cross-season work otherwise goes through the `_lab` loaders (below).
 
 | mart | grain | rows | season | in one line |
@@ -22,6 +23,9 @@ Cross-season work otherwise goes through the `_lab` loaders (below).
 | `mart_player_proj` | ORL/NOP player | 20 | 2026 | rich CTG per-player profile + archetype flags |
 | `mart_player_league` | leaguewide player | 600 | **2025+2026** | per-player archetype percentiles + flags, both seasons |
 | `mart_roster` | leaguewide player | 581 | 2026 | player DPM + minutes (projection-engine input) |
+| `mart_star_teammate_context` | season×team×star×teammate | 16 | **2025+2026** | Paolo/Zion co-minutes with each teammate + that teammate's traits |
+| `mart_star_supporting_cast` | season×team×star | 4 | **2025+2026** | the realized (co-minute-weighted) environment each star actually played in |
+| `mart_availability` | season×team×player | 1096 | **2025+2026** | games/minutes played + games missed + DPM (the "availability tax") |
 
 *(Two junk tables `_probe_singlefile` / `_write_probe` also sit under `marts/` — stray
 write-test artifacts; ignore them. The put-only IAM role can't delete them.)*
@@ -103,6 +107,45 @@ Rich CTG per-player profile: `dpm/o_dpm/d_dpm`; shot **frequency + accuracy by z
 
 **Informs:** roster win projections (backtest); team talent sums; leaguewide DPM leaderboards.
 
+## `mart_star_teammate_context` — 16 rows, (season, team, star, teammate) · **2024-25 + 2025-26**
+The **realized deployment** table: for each star (Paolo, Zion) and each teammate they actually
+shared the floor with, `shared_min` (BBref 2-man co-minutes), `star_oncourt_min` (BBref on/off),
+`pct_star_min_shared`, plus the teammate's fit traits from `mart_player_league`
+(`tm_dpm`, `tm_usg`, `tm_csg_pctl`, `tm_tpar_pctl`, `tm_rim_freq_pctl`, `tm_height_in`,
+`tm_is_shooter/creator/rim_protector`). Season sources differ (leaguewide 2-man/on-off for
+2024-25; team-specific `orl_/nop_` files for 2025-26). Answers *"who did the star play with,"*
+not *"who was on the roster."*
+
+**Informs:** Post 1 (roster architecture vs realized environment) and Post 3 (the ORL/NOP
+decomposition). **Established:** in 2025-26 Zion's top-two co-minute teammates (Murphy C&S 82,
+Bey 69) are strong shooters — the star was not "starved" of spacing.
+
+## `mart_star_supporting_cast` — 4 rows, (season, team, star) · **2024-25 + 2025-26**
+The star-season **realized-environment fingerprint**, co-minute-weighted from
+`mart_star_teammate_context`: `star_oncourt_min`; `cast_dpm` (talent of the teammates the star
+actually played with), `cast_csg_pctl` (their spacing), `cast_rimf_pctl`, `cast_height_in`; and
+coarse counts `n_shooters_hi / n_creators_hi / n_rimprot_hi / n_teammates_hi` (distinct
+teammates sharing ≥25% of the star's minutes). Continuous measures are robust; the counts are
+directional (binary flags).
+
+**Informs:** the **continuous** overlap↔complementarity axis that replaces the binary
+duplicate/complement label (§9). **Established:** Paolo's and Zion's 2025-26 co-minute spacing
+environments are nearly identical (50 vs 49); the difference that matters is availability
+(`star_oncourt_min`: Paolo 1583→2514 vs Zion 859→1842).
+
+## `mart_availability` — 1096 rows, (season, team, player) · **2024-25 + 2025-26**
+Leaguewide player availability: `gp`, `team_games` (82), `games_missed`, `pct_games_avail`,
+`mp`, `mpg`, `dpm`, `is_rotation` (MP≥800). Source: BBref Advanced `G`/`MP` per team-stint
+(a mid-season trade splits a player into two rows, so `gp` is games-for-THIS-team — low `gp`
+can mean "arrived late," not "hurt"); DARKO for `dpm` (joined name+season, so trades resolve).
+The **availability tax** (e.g. `Σ greatest(dpm,0) · games_missed`) is a notebook-level
+computation, kept out of the mart so the weighting stays an explicit, documented choice.
+
+**Informs:** Post 3 (why NOP collapsed) and the projection backtest's injury-driven misses.
+**Established:** NOP 2024-25 lost the 7th-most DPM-weighted games in the league (Zion 30 GP,
+Murray 31 GP) — the collapse was largely an availability shock; NOP 2025-26 was among the
+*healthiest* teams (rank 26), so that season's weakness is talent (−5.5), not health.
+
 ---
 
 ## Non-mart loaders (via `notebooks/_lab.py`)
@@ -119,6 +162,11 @@ that isn't a published mart.
 - **`load_roster_2027()`** — **2026-27** projected rosters (team, player, dpm, mpg) from DARKO's
   preseason leaderboard. → Post 4 forward-looking. CAVEAT: preseason DPM is integer-rounded and
   regressed to the mean; DARKO's rosters miss some July moves (e.g. Vučević→ORL not booked).
+- **`load_transactions()`** — ORL+NOP **roster-construction history** (70 ORL / 71 NOP rows,
+  2019-2026) from hand-curated, source-cited CSVs at `data/local/manual/transactions_{orl,nop}.csv`
+  (public data, version-controlled). One row per player per side of a move; adds an `era` tag
+  (`pre_star`/`post_star`) relative to the star's draft (Zion 2019-06-20 / Paolo 2022-06-23). →
+  Post 1 construction timeline. NEUTRAL: `era` is timing, not inferred front-office intent.
 
 ---
 

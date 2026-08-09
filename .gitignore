@@ -11,7 +11,11 @@ build/
 .uv/
 
 # Data — S3 is source of truth; never commit raw or processed data
-data/local/
+# Ignore raw hand-exports under data/local, but TRACK hand-curated, public,
+# source-cited manual data (transactions, roster overrides) — small & version-worthy.
+# (Exclude contents, not the dir, so data/local/manual/ can be re-included.)
+data/local/*
+!data/local/manual/
 
 # Charts — only commit final post-ready assets explicitly
 charts/

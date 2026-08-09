@@ -240,6 +240,38 @@ def load_roster_2027():
     return _roster27
 
 
+# --- ORL/NOP roster-construction transaction history (Post 1 timeline) --------
+# Hand-curated, source-cited transaction logs (one row per player per side of a move),
+# version-controlled at data/local/manual/transactions_{orl,nop}.csv. Used to separate the
+# three concepts the analysis keeps distinct (brief §2): roster CONSTRUCTION (who was acquired,
+# when, how) is what this loader captures — as opposed to roster ARCHITECTURE (traits that
+# coexist, from mart_player_league) and realized DEPLOYMENT (co-minutes, from
+# mart_star_teammate_context). `era` tags each move relative to the franchise star's draft
+# date (Zion 2019-06-20 / Paolo 2022-06-23): 'pre_star' = the player/move predates the star,
+# 'post_star' = it came after. NEUTRAL by design — "post_star acquisition" describes timing,
+# not front-office intent (we can't observe motive from a transaction).
+_transactions = None
+_STAR_DRAFT = {"NOP": "2019-06-20", "ORL": "2022-06-23"}  # Zion #1 / Paolo #1
+
+
+def load_transactions():
+    """ORL+NOP transaction history with an `era` (pre_star/post_star) tag per row."""
+    global _transactions
+    if _transactions is not None:
+        return _transactions
+    con = connect()
+    root = Path(__file__).resolve().parent.parent / "data" / "local" / "manual"
+    frames = []
+    for team, cutoff in _STAR_DRAFT.items():
+        frames.append(f"""
+          select *, case when date < date '{cutoff}' then 'pre_star' else 'post_star' end as era
+          from read_csv_auto('{root}/transactions_{team.lower()}.csv', header=true)""")
+    _transactions = con.execute(
+        " union all by name ".join(frames) + " order by date"
+    ).df()
+    return _transactions
+
+
 # --- Lineage access (for the data-walkthrough notebook only) -----------------
 # The house pattern says notebooks read marts, not raw/staging. The walkthrough
 # is the deliberate exception: it explains raw -> staging -> mart, so it needs to
