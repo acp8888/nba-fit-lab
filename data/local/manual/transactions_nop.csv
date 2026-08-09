@@ -1,0 +1,72 @@
+date,season,team,player,transaction_type,direction,method,source_url,notes
+2019-06-20,2019-20,NOP,Zion Williamson,draft,in,1st round pick #1 (2019 NBA Draft),https://www.basketball-reference.com/teams/NOP/2019_transactions.html,ANCHOR
+2019-06-20,2019-20,NOP,Alen Smailagic,draft,in,2nd round pick #39 (2019 NBA Draft),https://www.basketball-reference.com/teams/NOP/2019_transactions.html,
+2019-06-20,2019-20,NOP,Alen Smailagic,traded_away,out,traded to Golden State for cash and two future 2nd-rd picks (draft-day trade),https://www.basketball-reference.com/teams/NOP/2019_transactions.html,Never played for NOP
+2019-07-06,2019-20,NOP,Anthony Davis,traded_away,out,"traded to LA Lakers (3-team trade) for Lonzo Ball, Brandon Ingram, Josh Hart, cash, and three future 1st-rd picks",https://www.basketball-reference.com/teams/NOP/2020_transactions.html,Franchise-altering trade that preceded Zion's rookie season
+2019-07-06,2019-20,NOP,Lonzo Ball,trade,in,acquired from LA Lakers in Anthony Davis trade,https://www.basketball-reference.com/teams/NOP/2020_transactions.html,
+2019-07-06,2019-20,NOP,Brandon Ingram,trade,in,acquired from LA Lakers in Anthony Davis trade,https://www.basketball-reference.com/teams/NOP/2020_transactions.html,
+2019-07-06,2019-20,NOP,Josh Hart,trade,in,acquired from LA Lakers in Anthony Davis trade,https://www.basketball-reference.com/teams/NOP/2020_transactions.html,
+2019-07-07,2019-20,NOP,Nickeil Alexander-Walker,trade,in,"acquired from Atlanta (multi-team trade w/ Jaxson Hayes, Marcos Louzada Silva) for Jordan Bone, Solomon Hill, future 2nd-rd pick",https://www.basketball-reference.com/teams/NOP/2020_transactions.html,
+2019-07-07,2019-20,NOP,Jaxson Hayes,trade,in,acquired from Atlanta in same Nickeil Alexander-Walker trade,https://www.basketball-reference.com/teams/NOP/2020_transactions.html,
+2019-07-07,2019-20,NOP,Jordan Bone,traded_away,out,traded to Atlanta in same Nickeil Alexander-Walker/Jaxson Hayes trade,https://www.basketball-reference.com/teams/NOP/2020_transactions.html,
+2019-07-07,2019-20,NOP,Solomon Hill,traded_away,out,traded to Atlanta in same Nickeil Alexander-Walker/Jaxson Hayes trade,https://www.basketball-reference.com/teams/NOP/2020_transactions.html,
+2019-07-07,2019-20,NOP,Derrick Favors,trade,in,acquired from Utah for two future 2nd-rd picks,https://www.basketball-reference.com/teams/NOP/2020_transactions.html,
+2019-07-15,2019-20,NOP,J.J. Redick,free_agent_signing,in,signed as unrestricted free agent,https://www.basketball-reference.com/teams/NOP/2020_transactions.html,
+2020-11-18,2020-21,NOP,Kira Lewis Jr.,draft,in,1st round pick #13 (2020 NBA Draft),https://www.basketball-reference.com/teams/NOP/2020_transactions.html,2020 draft delayed to Nov. due to COVID-19
+2020-11-23,2020-21,NOP,Steven Adams,trade,in,"acquired from OKC (4-team trade) as part of package that sent Jrue Holiday to Milwaukee",https://www.basketball-reference.com/teams/NOP/2021_transactions.html,
+2020-11-23,2020-21,NOP,Eric Bledsoe,trade,in,"acquired from Milwaukee in same 4-team trade (w/ four future 1st-rd picks/swaps) that sent Jrue Holiday to Milwaukee",https://www.basketball-reference.com/teams/NOP/2021_transactions.html,
+2020-11-23,2020-21,NOP,Jrue Holiday,traded_away,out,"traded to Milwaukee (4-team trade) for Eric Bledsoe, Steven Adams, four future 1st-rd picks/swaps",https://www.basketball-reference.com/teams/NOP/2021_transactions.html,Major veteran departure ahead of rebuild
+2020-11-28,2020-21,NOP,Brandon Ingram,extension,in,signed maximum rookie extension,https://www.basketball-reference.com/teams/NOP/2021_transactions.html,
+2021-03-25,2020-21,NOP,J.J. Redick,traded_away,out,"traded to Dallas (w/ Nicolo Melli) for James Johnson, Wes Iwundu, and a 2021 2nd-rd pick",https://www.espn.com/nba/story/_/id/31135598/new-orleans-pelicans-sending-jj-redick-dallas-mavericks,BBR page text corrupted for this entry; confirmed via ESPN
+2021-03-25,2020-21,NOP,Nicolo Melli,traded_away,out,traded to Dallas in same J.J. Redick trade,https://www.espn.com/nba/story/_/id/31135598/new-orleans-pelicans-sending-jj-redick-dallas-mavericks,
+2021-03-25,2020-21,NOP,James Johnson,trade,in,acquired from Dallas in same J.J. Redick trade,https://www.espn.com/nba/story/_/id/31135598/new-orleans-pelicans-sending-jj-redick-dallas-mavericks,
+2021-03-25,2020-21,NOP,Wes Iwundu,trade,in,acquired from Dallas in same J.J. Redick trade,https://www.espn.com/nba/story/_/id/31135598/new-orleans-pelicans-sending-jj-redick-dallas-mavericks,
+2021-07-29,2021-22,NOP,Herb Jones,draft,in,2nd round pick #35 (2021 NBA Draft),https://www.basketball-reference.com/teams/NOP/2021_transactions.html,ANCHOR
+2021-07-29,2021-22,NOP,Ziaire Williams,draft,in,1st round pick #10 (2021 NBA Draft),https://www.basketball-reference.com/teams/NOP/2021_transactions.html,
+2021-07-29,2021-22,NOP,Jared Butler,draft,in,2nd round pick #40 (2021 NBA Draft),https://www.basketball-reference.com/teams/NOP/2021_transactions.html,
+2021-07-29,2021-22,NOP,Greg Brown III,draft,in,2nd round pick #43 (2021 NBA Draft),https://www.basketball-reference.com/teams/NOP/2021_transactions.html,
+2021-07-30,2021-22,NOP,Greg Brown III,traded_away,out,traded to Portland for cash and a 2026 2nd-rd pick,https://www.basketball-reference.com/teams/NOP/2022_transactions.html,
+2021-08-07,2021-22,NOP,Trey Murphy III,trade,in,"acquired via draft-night trade from Memphis (originally MEM's 2021 1st-rd pick #17, w/ Jonas Valanciunas); NOP sent Steven Adams, Eric Bledsoe, Jared Butler, Ziaire Williams + two future 2nd-rd picks",https://www.basketball-reference.com/teams/NOP/2022_transactions.html,ANCHOR
+2021-08-07,2021-22,NOP,Jonas Valanciunas,trade,in,acquired from Memphis in same Trey Murphy III trade,https://www.basketball-reference.com/teams/NOP/2022_transactions.html,
+2021-08-07,2021-22,NOP,Steven Adams,traded_away,out,"traded to Memphis (3-team trade) w/ Eric Bledsoe, Jared Butler, Ziaire Williams for Trey Murphy III and Jonas Valanciunas",https://www.basketball-reference.com/teams/NOP/2022_transactions.html,
+2021-08-07,2021-22,NOP,Eric Bledsoe,traded_away,out,traded to Memphis in same 3-team trade,https://www.basketball-reference.com/teams/NOP/2022_transactions.html,
+2021-08-07,2021-22,NOP,Jared Butler,traded_away,out,traded to Memphis in same 3-team trade,https://www.basketball-reference.com/teams/NOP/2022_transactions.html,
+2021-08-07,2021-22,NOP,Ziaire Williams,traded_away,out,traded to Memphis in same 3-team trade,https://www.basketball-reference.com/teams/NOP/2022_transactions.html,
+2021-08-07,2021-22,NOP,Devonte' Graham,trade,in,acquired from Charlotte via sign-and-trade in same 3-team deal,https://www.basketball-reference.com/teams/NOP/2022_transactions.html,
+2021-08-07,2021-22,NOP,Wesley Iwundu,traded_away,out,traded to Charlotte (cash + 2022 1st) in same 3-team deal,https://www.basketball-reference.com/teams/NOP/2022_transactions.html,
+2021-08-08,2021-22,NOP,Lonzo Ball,traded_away,out,"sign-and-trade to Chicago Bulls for Tomas Satoransky, Garrett Temple, cash, and a 2024 2nd-rd pick",https://www.basketball-reference.com/teams/NOP/2022_transactions.html,
+2021-08-08,2021-22,NOP,Tomas Satoransky,trade,in,acquired from Chicago in Lonzo Ball sign-and-trade,https://www.basketball-reference.com/teams/NOP/2022_transactions.html,
+2021-08-08,2021-22,NOP,Garrett Temple,trade,in,acquired from Chicago in Lonzo Ball sign-and-trade,https://www.basketball-reference.com/teams/NOP/2022_transactions.html,
+2022-02-08,2021-22,NOP,CJ McCollum,trade,in,"acquired from Portland (w/ Larry Nance Jr., Tony Snell) for Josh Hart, Tomas Satoransky, Nickeil Alexander-Walker, Didi Louzada, a protected 1st-rd pick, and two 2nd-rd picks",https://www.espn.com/nba/story/_/id/33244215/sources-portland-trail-blazers-sending-cj-mccollum-new-orleans-pelicans-part-trade,ANCHOR; BBR page text corrupted for this entry; confirmed via ESPN
+2022-02-08,2021-22,NOP,Larry Nance Jr.,trade,in,acquired from Portland in same CJ McCollum trade,https://www.espn.com/nba/story/_/id/33244215/sources-portland-trail-blazers-sending-cj-mccollum-new-orleans-pelicans-part-trade,
+2022-02-08,2021-22,NOP,Tony Snell,trade,in,acquired from Portland in same CJ McCollum trade,https://www.espn.com/nba/story/_/id/33244215/sources-portland-trail-blazers-sending-cj-mccollum-new-orleans-pelicans-part-trade,
+2022-02-08,2021-22,NOP,Josh Hart,traded_away,out,traded to Portland in CJ McCollum trade,https://www.espn.com/nba/story/_/id/33244215/sources-portland-trail-blazers-sending-cj-mccollum-new-orleans-pelicans-part-trade,
+2022-02-08,2021-22,NOP,Tomas Satoransky,traded_away,out,traded to Portland in CJ McCollum trade,https://www.espn.com/nba/story/_/id/33244215/sources-portland-trail-blazers-sending-cj-mccollum-new-orleans-pelicans-part-trade,
+2022-02-08,2021-22,NOP,Nickeil Alexander-Walker,traded_away,out,traded to Portland in CJ McCollum trade,https://www.espn.com/nba/story/_/id/33244215/sources-portland-trail-blazers-sending-cj-mccollum-new-orleans-pelicans-part-trade,
+2022-02-08,2021-22,NOP,Didi Louzada,traded_away,out,traded to Portland in CJ McCollum trade,https://www.espn.com/nba/story/_/id/33244215/sources-portland-trail-blazers-sending-cj-mccollum-new-orleans-pelicans-part-trade,
+2022-06-23,2022-23,NOP,Dyson Daniels,draft,in,1st round pick #8 (2022 NBA Draft),https://www.basketball-reference.com/teams/NOP/2022_transactions.html,
+2022-07-06,2022-23,NOP,Zion Williamson,extension,in,"signed 5-yr rookie-max extension, base $193M rising to $231M under supermax/All-NBA criteria; only first two years fully guaranteed, remainder tied to games-played and weight/body-fat incentives",https://www.nba.com/news/zion-williamson-pelicans-contract-extension,ANCHOR -- Zion's contract situation
+2023-02-09,2022-23,NOP,Josh Richardson,trade,in,acquired from San Antonio for Devonte' Graham and four future 2nd-rd picks,https://www.basketball-reference.com/teams/NOP/2023_transactions.html,
+2023-02-09,2022-23,NOP,Devonte' Graham,traded_away,out,traded to San Antonio (w/ four future 2nd-rd picks) for Josh Richardson,https://www.basketball-reference.com/teams/NOP/2023_transactions.html,
+2023-06-22,2023-24,NOP,Jordan Hawkins,draft,in,1st round pick #14 (2023 NBA Draft),https://www.basketball-reference.com/teams/NOP/2023_transactions.html,ANCHOR
+2024-01-17,2023-24,NOP,Kira Lewis Jr.,traded_away,out,traded to Indiana (w/ a 2024 2nd-rd pick) for cash; NOP received a trade exception,https://www.basketball-reference.com/teams/NOP/2024_transactions.html,BBR page text corrupted for this entry; player/team confirmed via web search cross-reference
+2024-06-26,2024-25,NOP,Yves Missi,draft,in,1st round pick #21 (2024 NBA Draft),https://www.basketball-reference.com/teams/NOP/2024_transactions.html,ANCHOR
+2024-06-27,2024-25,NOP,Antonio Reeves,trade,in,acquired from Orlando for two future 2nd-rd pick swap rights (2030 and 2031),https://www.basketball-reference.com/teams/NOP/2025_transactions.html,Also appears in ORL CSV (Reeves traded away by ORL)
+2024-07-06,2024-25,NOP,Dejounte Murray,trade,in,"acquired from Atlanta for Dyson Daniels, E.J. Liddell, Larry Nance Jr., Cody Zeller, a 2025 1st-rd pick, and a 2027 1st-rd pick",https://www.basketball-reference.com/teams/NOP/2025_transactions.html,ANCHOR
+2024-07-06,2024-25,NOP,Dyson Daniels,traded_away,out,traded to Atlanta in Dejounte Murray trade,https://www.basketball-reference.com/teams/NOP/2025_transactions.html,
+2024-07-06,2024-25,NOP,E.J. Liddell,traded_away,out,traded to Atlanta in Dejounte Murray trade,https://www.basketball-reference.com/teams/NOP/2025_transactions.html,
+2024-07-06,2024-25,NOP,Larry Nance Jr.,traded_away,out,traded to Atlanta in Dejounte Murray trade,https://www.basketball-reference.com/teams/NOP/2025_transactions.html,
+2024-07-06,2024-25,NOP,Cody Zeller,traded_away,out,"signed with NOP same day, then flipped to Atlanta in Dejounte Murray trade",https://www.basketball-reference.com/teams/NOP/2025_transactions.html,
+2025-06-17,2024-25,NOP,Mojave King,trade,in,acquired from Indiana (w/ a 2025 1st-rd pick) for a 2026 1st-rd pick,https://www.basketball-reference.com/teams/NOP/2025_transactions.html,
+2025-06-25,2025-26,NOP,Jeremiah Fears,draft,in,1st round pick #7 (2025 NBA Draft),https://www.basketball-reference.com/teams/NOP/2025_transactions.html,ANCHOR
+2025-06-25,2025-26,NOP,Asa Newell,draft,in,1st round pick #23 (2025 NBA Draft),https://www.basketball-reference.com/teams/NOP/2025_transactions.html,
+2025-06-25,2025-26,NOP,Asa Newell,traded_away,out,traded to Atlanta (w/ a 2026 1st-rd pick) for Derik Queen,https://www.basketball-reference.com/teams/NOP/2025_transactions.html,
+2025-06-25,2025-26,NOP,Derik Queen,trade,in,acquired from Atlanta for Asa Newell and a 2026 1st-rd pick,https://www.basketball-reference.com/teams/NOP/2025_transactions.html,ANCHOR
+2025-07-06,2025-26,NOP,CJ McCollum,traded_away,out,"traded to Washington (3-team trade, w/ Kelly Olynyk and a 2027 2nd-rd pick) for Saddiq Bey, Micah Peavy, Jordan Poole",https://www.basketball-reference.com/teams/NOP/2026_transactions.html,ANCHOR -- CJ McCollum departure
+2025-07-06,2025-26,NOP,Kelly Olynyk,traded_away,out,traded to Washington in same CJ McCollum 3-team trade,https://www.basketball-reference.com/teams/NOP/2026_transactions.html,
+2025-07-06,2025-26,NOP,Mojave King,traded_away,out,traded to Houston in same 3-team trade,https://www.basketball-reference.com/teams/NOP/2026_transactions.html,
+2025-07-06,2025-26,NOP,Saddiq Bey,trade,in,acquired from Washington in same 3-team trade,https://www.basketball-reference.com/teams/NOP/2026_transactions.html,
+2025-07-06,2025-26,NOP,Micah Peavy,trade,in,acquired from Washington in same 3-team trade,https://www.basketball-reference.com/teams/NOP/2026_transactions.html,
+2025-07-06,2025-26,NOP,Jordan Poole,trade,in,acquired from Washington in same 3-team trade,https://www.basketball-reference.com/teams/NOP/2026_transactions.html,
+2026-02-05,2025-26,NOP,Jose Alvarado,traded_away,out,"traded to New York Knicks (w/ Latavious Williams) for Dalen Terry, cash, a 2026 2nd-rd pick, and a 2027 2nd-rd pick",https://www.basketball-reference.com/teams/NOP/2026_transactions.html,
+2026-02-05,2025-26,NOP,Dalen Terry,trade,in,acquired from New York Knicks in Jose Alvarado trade,https://www.basketball-reference.com/teams/NOP/2026_transactions.html,
