@@ -70,7 +70,9 @@ select
 
 from g
 join stg_team_map tm    on g.opponent = tm.bbref_abbr
-join mart_team_style s  on tm.full_name = s.team_name
+-- mart_team_style is now two-season; pin to this game's season (all games here are 2025-26)
+-- so each opponent resolves to exactly one style row, not one per season.
+join mart_team_style s  on tm.full_name = s.team_name and s.season = g.season
 
 -- ASSERTIONS (enforced by run.py):
 -- every game is kept (inner joins must not drop rows) and fully resolved

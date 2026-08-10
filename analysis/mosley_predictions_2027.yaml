@@ -1,0 +1,97 @@
+# Mosley coaching-transition predictions — PRE-REGISTERED, frozen before 2026-27 games.
+#
+# Jamahl Mosley coached Orlando through 2024-25 and 2025-26, then moved to New Orleans for
+# 2026-27. This file freezes falsifiable style predictions BEFORE the season, so Post 5 can grade
+# them honestly rather than rationalizing after the fact. A coaching move is NOT a clean
+# experiment (roster, health, schedule change too) — the discipline here is (a) only predict on
+# dimensions that were PERSISTENT across both of Mosley's Orlando seasons (a coaching signature
+# should be stable year-to-year), and (b) test BOTH sides: New Orleans should drift TOWARD the
+# fingerprint, and Orlando under its new coach should drift AWAY if the trait was coaching not roster.
+#
+# Percentiles are within-season leaguewide ranks from mart_team_style (2 seasons). "Meaningful
+# move" threshold = leaguewide median |Δpercentile| year-to-year on these dims (~16) + margin -> 26
+# percentile points. Grading uses the 2026-27 mart_team_style partition once it exists.
+
+meta:
+  generated: "2026-08-09"
+  generated_by: "phase5/mosley refactor"
+  source_mart: "mart_team_style (season=2025 [2024-25], season=2026 [2025-26])"
+  coach: "Jamahl Mosley"
+  from_team: "Orlando Magic (ORL)"
+  to_team: "New Orleans Pelicans (NOP)"
+  meaningful_move_pctl: 26
+  caveat: >
+    Roster, health, and schedule change alongside the coach. Persistence across BOTH of Mosley's
+    Orlando seasons is what separates a plausible coaching signature from a roster artifact.
+    Predict only on persistent dims; grade both directions; expect aggregate drift, not certainty.
+
+predictions:
+
+  # ---- FLAGSHIP: the strongest, most persistent, most falsifiable signature ----
+  - metric: def_three_pa_rate_allowed
+    plain: "opponent 3-point attempt rate (lower = you run them off the line)"
+    confidence: high
+    orl_2024_25: {value: 35.0, pctl: 0}     # league-LOWEST opponent 3PA rate
+    orl_2025_26: {value: 35.9, pctl: 10}    # near-lowest again -> persistent signature
+    nop_2025_26_baseline: {value: 41.0, pctl: 83}  # NOP currently ALLOWS lots of threes
+    expect_nop: "DROP sharply — move from ~83rd toward the bottom third (< ~57th pctl)"
+    expect_orl: "RISE toward league average (suppression weakens) if it was Mosley, not roster"
+    rationale: >
+      Mosley's Orlando ranked 0th and 10th percentile at limiting opponent 3PA rate — the single
+      most persistent, most extreme signature. New Orleans sits at the 83rd percentile, so there is
+      large room to move. This is the headline test.
+
+  # ---- SECONDARY: persistent but NOP is already near the fingerprint (weaker tests) ----
+  - metric: def_transition_rate_allowed
+    plain: "opponent transition frequency (lower = better transition defense)"
+    confidence: low
+    orl_2024_25: {value: 15.7, pctl: 60}
+    orl_2025_26: {value: 15.8, pctl: 63}
+    nop_2025_26_baseline: {value: 16.0, pctl: 70}
+    expect_nop: "HOLD / stay strong — already at the fingerprint (little room), so a null is expected"
+    expect_orl: "little change expected"
+    rationale: >
+      Persistent Orlando strength, but New Orleans already grades well here, so this is a weak test
+      (a confirmation would be consistent, a non-move is uninformative).
+
+  - metric: def_rim_rate_allowed
+    plain: "opponent rim-shot frequency allowed (lower = better rim deterrence)"
+    confidence: low
+    orl_2024_25: {value: 31.8, pctl: 57}
+    orl_2025_26: {value: 31.5, pctl: 53}
+    nop_2025_26_baseline: {value: 33.9, pctl: 73}
+    expect_nop: "HOLD — already above the fingerprint; rim protection is the one fit lever (Post 2)"
+    expect_orl: "little change expected"
+    rationale: >
+      Ties Post 2's rim-protection finding. New Orleans already deters rim shots well, so this is
+      more a continuity check than a prediction of movement.
+
+  # ---- OFFENSE: low-three, corner-oriented shot diet (persistent, moderate room) ----
+  - metric: off_three_pa_rate
+    plain: "own 3-point attempt rate (Mosley's Orlando shot FEW threes)"
+    confidence: medium
+    orl_2024_25: {value: 36.6, pctl: 30}
+    orl_2025_26: {value: 34.6, pctl: 20}
+    nop_2025_26_baseline: {value: 32.2, pctl: 10}
+    expect_nop: "HOLD LOW — already bottom-decile; a Mosley team should not suddenly jack threes"
+    expect_orl: "RISE toward league average under a new coach if the low-three diet was Mosley"
+    rationale: >
+      A stable, if modest, Orlando trait. New Orleans already shoots few threes, so the sharper
+      test is the Orlando side — does its 3PA rate climb once Mosley leaves?
+
+  - metric: off_corner_three_rate
+    plain: "share of shots that are corner threes (Mosley's Orlando ran above-average corners)"
+    confidence: medium
+    orl_2024_25: {value: 10.7, pctl: 60}
+    orl_2025_26: {value: 10.2, pctl: 60}
+    nop_2025_26_baseline: {value: 8.0, pctl: 7}
+    expect_nop: "RISE — from the 7th percentile toward Orlando's ~60th (a real, testable move)"
+    expect_orl: "FALL toward league average if the corner emphasis was Mosley's design"
+    rationale: >
+      Exactly stable in Orlando (60th both seasons) and New Orleans is near the bottom (7th), so
+      there is clear room. A secondary but genuinely falsifiable both-directions test.
+
+# Dimensions deliberately EXCLUDED as coaching signatures (not persistent in Mosley's Orlando):
+#   pace (3rd -> 60th pctl across his two seasons), def_tov_forced_pct (93rd -> 53rd),
+#   off_rim_rate (60th -> 87th). These moved too much year-to-year to attribute to the coach,
+#   so predicting them for New Orleans would be unjustified.
