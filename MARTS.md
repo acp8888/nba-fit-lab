@@ -15,7 +15,7 @@ Cross-season work otherwise goes through the `_lab` loaders (below).
 
 | mart | grain | rows | season | in one line |
 |---|---|---|---|---|
-| `mart_team_style` | team | 30 | 2026 | each team's pace/size/shot-profile fingerprint (CTG-rich) |
+| `mart_team_style` | team | 60 | **2025+2026** | each team's pace/size/shot-profile fingerprint (CTG-rich) |
 | `mart_games_styled` | ORL/NOP game | 171 | 2026 | per-game result + opponent quality & style |
 | `mart_lineup_features_league` | leaguewide 5-man lineup | 600 | 2026 | the fit-regression workhorse (net vs talent + fit features) |
 | `mart_lineup_features` | ORL/NOP 5-man lineup | 40 | 2026 | ORL/NOP lineups with *discrete* fit flags |
@@ -32,15 +32,20 @@ write-test artifacts; ignore them. The put-only IAM role can't delete them.)*
 
 ---
 
-## `mart_team_style` — 30 rows, one per team · 2025-26
+## `mart_team_style` — 60 rows, one per team-season · **2024-25 + 2025-26**
 Team "style fingerprint" (CTG-rich, garbage-time filtered): `pace`, `size_wavg_height_in`;
 full offense (`off_rim_rate`, `off_short/long_mid_rate`, `off_corner/non_corner_three_rate`,
 `off_three_pa_rate`, `off_transition_rate`, `off_transition_ppp`, `off_halfcourt_ppp`); full
 defense (`def_rim_rate_allowed`, `def_three_pa_rate_allowed`, `def_tov_forced_pct`,
-`def_orb_allowed_pct`, `def_transition_*`); four factors; `off/def/net_pts_poss`.
+`def_orb_allowed_pct`, `def_transition_*`); four factors; `off/def/net_pts_poss`. **Both seasons
+share one harmonized schema** — the 2024-25 CTG export is the older *verbose* format (full-label
+columns like `OFFENSE: Pts/Poss`, interleaved rank columns, city short-names, an `Average` row),
+parsed into the same canonical columns as the pre-cleaned 2025-26 files. ⚠️ **CTG-derived →
+private; never publish to the public WASM site.**
 
-**Informs:** team archetype clustering (found: fuzzy, no clean types); opponent-style
-features; Mosley style trace (2-season version not yet built — see loaders/open threads).
+**Informs:** opponent-style features (Post 3 standalone matchups); the **Mosley style
+fingerprint (Post 5)** — persistent signature across both ORL seasons is elite opponent-3PA-rate
+suppression (0th/10th %ile); frozen predictions in `analysis/mosley_predictions_2027.yaml`.
 
 ## `mart_games_styled` — 171 rows, one per ORL/NOP game · 2025-26
 Per-game outcome (`margin`, `o/d/net_rtg`, `result`, `pace`, `three_pa_rate`,
@@ -167,6 +172,13 @@ that isn't a published mart.
   (public data, version-controlled). One row per player per side of a move; adds an `era` tag
   (`pre_star`/`post_star`) relative to the star's draft (Zion 2019-06-20 / Paolo 2022-06-23). →
   Post 1 construction timeline. NEUTRAL: `era` is timing, not inferred front-office intent.
+- **`load_shotquality()`** — ⚠️ **PRIVATE / licensed / local-only.** ShotQuality RAPM (Databallr),
+  673 players, read from `data/local/raw/databallr/` (gitignored, **never** on S3 or in git).
+  Shot-quality ridge-RAPM over a 3-year time-decay window (2023-24..2025-26) — one blended
+  per-player quality estimate, z-scored (`oSQ/dSQ/cSQ`, `oTS/dTS/cTS`), NOT points-per-100 and
+  NOT a per-season number (`year=2026` = decay-window end). Used only as an **independent talent
+  axis** for robustness cross-checks (2025-26 lineups only). **Treat like CTG data: never export
+  ShotQuality-derived values to the public WASM site or public repo.**
 
 ---
 
