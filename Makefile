@@ -20,6 +20,10 @@ ingest:
 transform:
 	uv run python transform/run.py
 
-# The single analysis notebook — a per-blog-post walkthrough of the whole series.
+# The main analysis notebook — the five-post walkthrough of the whole series.
 notebook:
 	uv run marimo edit notebooks/walkthrough.py
+
+# Standalone side analysis — opponent style & matchups (moved out of the main series).
+matchups:
+	uv run marimo edit notebooks/matchups_standalone.py

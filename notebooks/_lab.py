@@ -265,7 +265,7 @@ _team_seasons = None
 
 
 def load_team_seasons():
-    """Per (season, team): actual net rating + talent (5x wmean DPM), 2024-25 and 2025-26."""
+    """Per (season, team): actual net + actual WINS + talent (5x wmean DPM), 2024-25 & 2025-26."""
     global _team_seasons
     if _team_seasons is not None:
         return _team_seasons
@@ -282,8 +282,9 @@ def load_team_seasons():
 
     def block(season, ratings_csv, darko_csv):
         return f"""
-          select {season} as season, tm.bbref as team, r.team_name, r.actual, t.talent
-          from (select "Team" team_name, cast("NRtg" as double) actual
+          select {season} as season, tm.bbref as team, r.team_name, r.actual, r.wins, r.losses, t.talent
+          from (select "Team" team_name, cast("NRtg" as double) actual,
+                       cast("W" as int) wins, cast("L" as int) losses
                 from read_csv_auto('{RAW}/{ratings_csv}')) r
           join (select "Team" team_name,
                   5*sum(cast(regexp_replace("DPM",'^\\+','') as double)*"MPG")/sum("MPG") talent
@@ -314,16 +315,62 @@ def load_team_seasons():
 _roster27 = None
 
 
-def load_roster_2027():
-    """2026-27 projected rosters from DARKO: (team_name, player, dpm, mpg)."""
+def load_roster_2027(apply_overrides=True):
+    """2026-27 projected rosters from DARKO, with version-controlled roster overrides applied.
+
+    DARKO's preseason leaderboard misses some July 2026 moves (e.g. Vučević signed with ORL but
+    DARKO still lists him on BOS; Moe Wagner left ORL but is still listed there). Rather than
+    hard-code fixes in a notebook cell, known corrections live in
+    data/local/manual/roster_2027_overrides.csv (player, team, action add/remove, mpg_override,
+    source_note) and are applied here. DARKO supplies each player's DPM (talent); the override
+    only corrects team membership and minutes. Pass apply_overrides=False for the raw DARKO view.
+    """
     global _roster27
-    if _roster27 is not None:
+    if _roster27 is not None and apply_overrides:
         return _roster27
     con = connect()
-    _roster27 = con.execute(f"""
+    raw = con.execute(f"""
         select "Team" team_name, "Player" player,
                cast(regexp_replace("DPM", '^\\+', '') as double) dpm, "MPG" mpg
         from read_csv_auto('{RAW}/darko/2026-08-07/darko-dpm-leaderboard.csv')""").df()
+    if not apply_overrides:
+        return raw
+    import pandas as pd
+
+    tmap = {"ORL": "Orlando Magic", "NOP": "New Orleans Pelicans"}
+    ov_path = (
+        Path(__file__).resolve().parent.parent
+        / "data/local/manual/roster_2027_overrides.csv"
+    )
+    df = raw.copy()
+    if ov_path.exists():
+        ov = pd.read_csv(ov_path)
+        for _, o in ov.iterrows():
+            full = tmap.get(o["team"], o["team"])
+            if o["action"] == "remove":
+                df = df[~((df.player == o["player"]) & (df.team_name == full))]
+            elif o["action"] == "add":
+                # keep DARKO's DPM for this player wherever listed; move to the new team + mpg
+                talent = raw.loc[raw.player == o["player"], "dpm"]
+                dpm = float(talent.iloc[0]) if len(talent) else 0.0
+                df = df[df.player != o["player"]]  # drop the stale-team row
+                df = pd.concat(
+                    [
+                        df,
+                        pd.DataFrame(
+                            [
+                                {
+                                    "team_name": full,
+                                    "player": o["player"],
+                                    "dpm": dpm,
+                                    "mpg": o["mpg_override"],
+                                }
+                            ]
+                        ),
+                    ],
+                    ignore_index=True,
+                )
+    _roster27 = df
     return _roster27
 
 

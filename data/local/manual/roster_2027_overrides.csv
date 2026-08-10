@@ -1,0 +1,3 @@
+player,team,action,dpm_source,mpg_override,transaction_date,source_note
+Nikola Vucevic,ORL,add,darko,24,2026-07-01,"Signed with ORL as UFA (1yr/$3.9M); DARKO still lists him on BOS. Keep DARKO DPM, set team=ORL and a starter-level mpg."
+Moritz Wagner,ORL,remove,,,2026-07-01,"Left ORL as UFA; DARKO still lists him on ORL. Remove from ORL projection."
