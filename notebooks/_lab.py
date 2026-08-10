@@ -170,6 +170,49 @@ def load_games_rim():
     return _games_rim
 
 
+# --- Calibrated talent baseline / fit residual (brief §12) -------------------
+# The intuitive "fit = net - SumDPM" assumes the talent coefficient is exactly 1, which is not
+# theoretically required (and is empirically false — net is concave in SumDPM). This fits a
+# talent-only baseline net ~ f(SumDPM) and returns the OUT-OF-FOLD residual (actual minus the
+# prediction from a model trained on OTHER teams), so "fit" is performance beyond a *calibrated*
+# talent expectation rather than beyond a rigid 1:1 line. Leave-one-team-out grouping keeps a
+# team's own lineups out of its baseline (lineups nest in teams). Two baselines are returned:
+#   resid_linear  — talent enters linearly
+#   resid_quad    — talent enters as SumDPM + SumDPM^2 (captures saturation/concavity)
+# Minutes-weighted fit throughout (a 500-min lineup should anchor the curve more than a 90-min one).
+def calibrated_fit_residual(
+    df,
+    talent="talent_sum_dpm",
+    outcome="net_pts_per100",
+    group="team",
+    weight="minutes",
+):
+    """Return df with resid_linear / resid_quad: out-of-fold (leave-one-team-out) fit residuals."""
+    import numpy as np
+
+    d = df.reset_index(drop=True).copy()
+    x = d[talent].to_numpy(float)
+    y = d[outcome].to_numpy(float)
+    w = d[weight].to_numpy(float) if weight in d else np.ones(len(d))
+    groups = d[group].to_numpy()
+
+    def wls_fit(X, yy, ww):
+        # weighted least squares via normal equations; X includes intercept column
+        WX = X * ww[:, None]
+        return np.linalg.solve(X.T @ WX, X.T @ (ww * yy))
+
+    for name, cols in (("resid_linear", 1), ("resid_quad", 2)):
+        pred = np.full(len(d), np.nan)
+        for g in np.unique(groups):
+            tr, te = groups != g, groups == g
+            Xtr = np.vander(x[tr], cols + 1, increasing=True)  # [1, x, x^2...]
+            Xte = np.vander(x[te], cols + 1, increasing=True)
+            beta = wls_fit(Xtr, y[tr], w[tr])
+            pred[te] = Xte @ beta
+        d[name] = y - pred
+    return d
+
+
 # --- Per (season, team) net rating + talent (for the pooled Analysis C) -------
 # Actual net = BBref team NRtg; talent = 5 x minutes-weighted DARKO DPM. Both seasons,
 # from raw (2024-25 team ratings are a separate pull). Lean by design — the CTG-rich
