@@ -155,6 +155,93 @@ join sacc_def      on ff."Team" = (select full_name from team_map where short_na
 join ctx_def_trans on ff."Team" = (select full_name from team_map where short_name = ctx_def_trans."Team")
 join ctx_def_hc    on ff."Team" = (select full_name from team_map where short_name = ctx_def_hc."Team")
 
+union all by name
+
+-- ============================ 2024-25 (season 2025) ============================
+-- The 2024-25 CTG exports are the RAW/verbose format: full descriptive labels
+-- ("OFFENSE: Pts/Poss", "All Transition: Freq"), an interleaved "... Rank" column
+-- before each metric, city-only short names, an "Average" summary row (not "League
+-- Average"), and NO "Rk" column. This block maps that format onto the identical
+-- canonical schema above. Casing is inconsistent between CTG's offense and defense
+-- context files ("All Transition:" vs "ALL TRANSITION:"), so column refs are exact.
+select
+    tm2."full_name"                                                 as team_name,
+    2025                                                            as season,
+
+    -- four factors (offense)
+    cast(ff2."OFFENSE: Pts/Poss" as double)                         as off_pts_poss,
+    cast(replace(ff2."OFFENSE: eFG%", '%', '') as double)           as off_efg_pct,
+    cast(replace(ff2."OFFENSE: TOV%", '%', '') as double)           as off_tov_pct,
+    cast(replace(ff2."OFFENSE: ORB%", '%', '') as double)           as off_orb_pct,
+    cast(ff2."OFFENSE: FT Rate" as double)                          as off_ft_rate,
+
+    -- four factors (defense)
+    cast(ff2."DEFENSE: Pts/Poss" as double)                         as def_pts_poss,
+    cast(replace(ff2."DEFENSE: eFG%", '%', '') as double)           as def_efg_pct,
+    cast(replace(ff2."DEFENSE: TOV%", '%', '') as double)           as def_tov_pct,
+    cast(replace(ff2."DEFENSE: ORB%", '%', '') as double)           as def_orb_pct,
+    cast(ff2."DEFENSE: FT Rate" as double)                          as def_ft_rate,
+
+    -- shooting frequency offense (zone breakdown)
+    cast(replace(sfo2."Rim",          '%', '') as double)           as off_freq_rim,
+    cast(replace(sfo2."Short Mid",    '%', '') as double)           as off_freq_short_mid,
+    cast(replace(sfo2."Long Mid",     '%', '') as double)           as off_freq_long_mid,
+    cast(replace(sfo2."Corner Three", '%', '') as double)           as off_freq_corner_three,
+    cast(replace(sfo2."Non Corner",   '%', '') as double)           as off_freq_non_corner_three,
+
+    -- shooting accuracy offense
+    cast(replace(sao2."Rim",          '%', '') as double)           as off_acc_rim,
+    cast(replace(sao2."Short Mid",    '%', '') as double)           as off_acc_short_mid,
+    cast(replace(sao2."Long Mid",     '%', '') as double)           as off_acc_long_mid,
+    cast(replace(sao2."Corner Three", '%', '') as double)           as off_acc_corner_three,
+    cast(replace(sao2."Non Corner",   '%', '') as double)           as off_acc_non_corner_three,
+
+    -- shooting frequency defense (defense files use the same zone labels, not "Opp*")
+    cast(replace(sfd2."Rim",          '%', '') as double)           as def_freq_rim,
+    cast(replace(sfd2."Short Mid",    '%', '') as double)           as def_freq_short_mid,
+    cast(replace(sfd2."Long Mid",     '%', '') as double)           as def_freq_long_mid,
+    cast(replace(sfd2."Corner Three", '%', '') as double)           as def_freq_corner_three,
+    cast(replace(sfd2."Non Corner",   '%', '') as double)           as def_freq_non_corner_three,
+
+    -- shooting accuracy defense
+    cast(replace(sad2."Rim",          '%', '') as double)           as def_acc_rim,
+    cast(replace(sad2."Short Mid",    '%', '') as double)           as def_acc_short_mid,
+    cast(replace(sad2."Long Mid",     '%', '') as double)           as def_acc_long_mid,
+    cast(replace(sad2."Corner Three", '%', '') as double)           as def_acc_corner_three,
+    cast(replace(sad2."Non Corner",   '%', '') as double)           as def_acc_non_corner_three,
+
+    -- context: offense transition
+    cast(replace(cot2."All Transition: Freq", '%', '') as double)   as off_trans_freq,
+    cast(cot2."All Transition: Pts/Play" as double)                 as off_trans_pts_per_play,
+    cast(cot2."Pts/Poss" as double)                                 as off_total_pts_poss,
+
+    -- context: offense halfcourt
+    cast(coh2."HALFCOURT: Pts/Play" as double)                      as off_hc_pts_per_play,
+
+    -- context: defense transition (uppercase labels in this file)
+    cast(replace(cdt2."ALL TRANSITION: Freq", '%', '') as double)   as def_trans_freq,
+    cast(cdt2."ALL TRANSITION: Pts/Play" as double)                 as def_trans_pts_per_play,
+
+    -- context: defense halfcourt
+    cast(cdh2."HALFCOURT: Pts/Play" as double)                      as def_hc_pts_per_play
+
+from (select * from read_csv_auto('s3://nba-fit-lab/raw/ctg/2026-08-07/league_four_factors_2024-25.csv') where "Team" <> 'Average') ff2
+join team_map tm2 on tm2.short_name = ff2."Team"
+join (select * from read_csv_auto('s3://nba-fit-lab/raw/ctg/2026-08-07/league_shooting_offense_frequency_2024-25.csv') where "Team" <> 'Average') sfo2 on sfo2."Team" = ff2."Team"
+join (select * from read_csv_auto('s3://nba-fit-lab/raw/ctg/2026-08-07/league_shooting_offense_accuracy_2024-25.csv')  where "Team" <> 'Average') sao2 on sao2."Team" = ff2."Team"
+join (select * from read_csv_auto('s3://nba-fit-lab/raw/ctg/2026-08-07/league_shooting_defense_frequency_2024-25.csv') where "Team" <> 'Average') sfd2 on sfd2."Team" = ff2."Team"
+join (select * from read_csv_auto('s3://nba-fit-lab/raw/ctg/2026-08-07/league_shooting_defense_accuracy_2024-25.csv')  where "Team" <> 'Average') sad2 on sad2."Team" = ff2."Team"
+join (select * from read_csv_auto('s3://nba-fit-lab/raw/ctg/2026-08-07/league_context_offense_transition_2024-25.csv') where "Team" <> 'Average') cot2 on cot2."Team" = ff2."Team"
+join (select * from read_csv_auto('s3://nba-fit-lab/raw/ctg/2026-08-07/league_context_offense_halfcourt_2024-25.csv')  where "Team" <> 'Average') coh2 on coh2."Team" = ff2."Team"
+join (select * from read_csv_auto('s3://nba-fit-lab/raw/ctg/2026-08-07/league_context_defense_transition_2024-25.csv') where "Team" <> 'Average') cdt2 on cdt2."Team" = ff2."Team"
+join (select * from read_csv_auto('s3://nba-fit-lab/raw/ctg/2026-08-07/league_context_defense_halfcourt_2024-25.csv')  where "Team" <> 'Average') cdh2 on cdh2."Team" = ff2."Team"
+
 -- ASSERTIONS (enforced by run.py):
--- ASSERT == 30: SELECT count(*) FROM stg_ctg_team
+-- ASSERT == 60: SELECT count(*) FROM stg_ctg_team
+-- ASSERT == 2: SELECT count(DISTINCT season) FROM stg_ctg_team
+-- ASSERT == 30: SELECT count(*) FROM stg_ctg_team WHERE season = 2025
 -- ASSERT == 0: SELECT count(*) FROM stg_ctg_team WHERE team_name IS NULL
+-- harmonized schema: same rim-rate metric sane in BOTH seasons (guards the verbose-format parse)
+-- ASSERT == 0: SELECT count(*) FROM stg_ctg_team WHERE off_freq_rim NOT BETWEEN 15 AND 55
+-- off_pts_poss is CTG points per 100 possessions (~90-125), harmonized across both seasons
+-- ASSERT == 0: SELECT count(*) FROM stg_ctg_team WHERE off_pts_poss NOT BETWEEN 90 AND 130

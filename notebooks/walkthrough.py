@@ -941,29 +941,133 @@ def _(mo):
 def _(mo):
     mo.md("""
     ---
-    # Post 5 · *The coach changes sides* *(in-season, coming)*
+    # Post 5 · *The coach changes sides*
 
-    **The question.** Jamahl Mosley coached Orlando and now coaches New Orleans. Which parts of
-    Orlando's identity were **Mosley**, and which were the **roster**? A coaching move is a rare
-    chance to make *falsifiable* style predictions — not "the cleanest experiment in the league"
-    (roster, health, and schedule all change at once), but a genuine two-sided test.
+    **The question.** Jamahl Mosley coached Orlando through 2024-25 and 2025-26, and now coaches
+    New Orleans. Which parts of Orlando's identity were **Mosley**, and which were the **roster**?
+    A coaching move is *not* "the cleanest experiment in the league" — roster, health, and
+    schedule all change at once — but it's a rare chance to make **falsifiable** style predictions
+    and grade them.
 
-    **The data (coming).** A two-season `mart_team_style` (2024-25 + 2025-26) to fingerprint
-    Mosley's Orlando on the dimensions that plausibly reflect coaching (pace, transition rate,
-    shot profile, rim rates), plus in-season refreshes.
+    **The data.** The now two-season `mart_team_style` (2024-25 + 2025-26), which required parsing
+    Cleaning-the-Glass's older verbose export format for 2024-25 and harmonizing it to the same
+    schema. We fingerprint Mosley's Orlando on style dimensions that plausibly reflect *coaching*.
 
-    **The method.** Freeze a set of measurable predictions *before* the games — for both New
-    Orleans (drift **toward** Mosley's Orlando fingerprint) and Orlando under its new coach
-    (drift **away**) — then grade them as the season arrives.
+    **The method.** Only trust a dimension as a coaching signature if it was **persistent across
+    both** of Mosley's Orlando seasons (a real signature should be stable year-to-year). Then
+    freeze predictions — New Orleans should drift **toward** the fingerprint, Orlando under its new
+    coach **away** — in a version-controlled file (`analysis/mosley_predictions_2027.yaml`) *before*
+    the 2026-27 games, so the grade can't be fudged.
+    """)
+    return
 
-    > 🏀 **Takeaway:** this is the live payoff. Posts 1–4 set the priors (similar constraint,
-    > different paths; talent and health drive outcomes; rim protection is the one fit lever);
-    > Post 5 tests which stylistic traits actually travel with the coach. Built next, once the
-    > two-season style trace and a few weeks of games exist.
 
-    **The gaps.** Not built yet: it needs the two-season style fingerprint and in-season data,
-    and even then coaching and roster change together — so persistence across *both* of Mosley's
-    Orlando seasons is what separates a coaching signature from a roster artifact.
+@app.cell
+def _(load_mart, np, pd):
+    p5_ts = load_mart("mart_team_style")
+
+    def _p5_pctl(col, val, season):
+        s = p5_ts[p5_ts.season == season][col]
+        return round(100 * (s < val).mean())
+
+    # coaching-plausible dimensions; is each one PERSISTENT across Mosley's two ORL seasons?
+    p5_dims = {
+        "def_three_pa_rate_allowed": "opp 3PA rate allowed (low = run them off the line)",
+        "def_transition_rate_allowed": "opp transition rate allowed (low = good)",
+        "def_rim_rate_allowed": "opp rim rate allowed (low = deters rim)",
+        "off_three_pa_rate": "own 3PA rate (Mosley ORL shot few)",
+        "off_corner_three_rate": "own corner-3 share",
+        "pace": "pace (tempo)",
+        "def_tov_forced_pct": "forces turnovers",
+    }
+    p5_rows = []
+    for col, lbl in p5_dims.items():
+        o25 = _p5_pctl(
+            col,
+            p5_ts[(p5_ts.season == 2025) & (p5_ts.team_name == "Orlando Magic")][
+                col
+            ].iloc[0],
+            2025,
+        )
+        o26 = _p5_pctl(
+            col,
+            p5_ts[(p5_ts.season == 2026) & (p5_ts.team_name == "Orlando Magic")][
+                col
+            ].iloc[0],
+            2026,
+        )
+        nop = _p5_pctl(
+            col,
+            p5_ts[(p5_ts.season == 2026) & (p5_ts.team_name == "New Orleans Pelicans")][
+                col
+            ].iloc[0],
+            2026,
+        )
+        persistent = abs(o25 - o26) <= 20 and (o25 - 50) * (o26 - 50) > 0
+        p5_rows.append(
+            {
+                "dimension": lbl,
+                "ORL 24-25 %ile": o25,
+                "ORL 25-26 %ile": o26,
+                "persistent?": "✓" if persistent else "—",
+                "NOP 25-26 %ile": nop,
+            }
+        )
+    p5_fp = pd.DataFrame(p5_rows)
+    return (p5_fp,)
+
+
+@app.cell
+def _(mo, p5_fp):
+    mo.vstack(
+        [
+            mo.md(
+                "**Mosley's Orlando fingerprint — league percentiles, both seasons (✓ = persistent):**"
+            ),
+            mo.ui.table(p5_fp, selection=None),
+            mo.md("""
+        - **The signature is defensive, and it's about the three-point line.** Mosley's Orlando
+          ranked **0th and 10th** percentile at limiting opponents' three-point *rate* — dead last
+          / near-last in the league at *allowing* threes, both seasons. That is the most extreme,
+          most persistent trait, paired with good transition and rim defense and a low-three,
+          corner-oriented offense.
+        - **Pace is *not* a Mosley signature.** Orlando went from the 3rd percentile in pace
+          (2024-25) to the 60th (2025-26) — too volatile to pin on the coach — so we deliberately
+          **don't** predict New Orleans will speed up. (Same for forcing turnovers.) Predicting
+          only the stable traits is the whole discipline.
+        """),
+        ]
+    )
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ### The frozen predictions (pre-registered, `analysis/mosley_predictions_2027.yaml`)
+
+    | Test | Mosley's ORL | New Orleans now | Prediction (2026-27) |
+    |---|---|---|---|
+    | **Opp 3PA rate allowed** (flagship) | 0th–10th %ile | **83rd** %ile | NOP **drops sharply** toward the bottom third |
+    | Own corner-3 share | 60th %ile | 7th %ile | NOP **rises** toward Orlando's level |
+    | Own 3PA rate | 20th–30th %ile | 10th %ile | ORL side: **rises** once Mosley leaves |
+    | Opp rim / transition rate | 53rd–63rd %ile | already strong | HOLD (continuity, weak test) |
+
+    Each is graded **both directions** — New Orleans toward the fingerprint, Orlando away — with a
+    "meaningful move" bar of ~26 league-percentile points (the leaguewide year-to-year volatility
+    on these dimensions, plus margin).
+
+    > 🏀 **Takeaway:** if Mosley's fingerprint is *coaching*, New Orleans's defense should start
+    > chasing shooters off the line — its opponent three-point rate should fall from the 83rd
+    > percentile toward the bottom third — while Orlando's elite three-point suppression fades
+    > under a new voice. If it's *roster*, neither moves. This is the one genuinely
+    > **forward-looking** test in the series, and it's frozen before the games so it can't be
+    > rationalized after.
+
+    **The gaps.** Still no 2026-27 games — this is the pre-registration, not the grade. Coaching
+    and roster change together, so persistence across both Orlando seasons is the only thing
+    separating a coaching signature from a roster artifact, and even that is suggestive, not proof.
+    The CTG data behind the fingerprint is licensed — it stays private, never in the public site.
     """)
     return
 
@@ -1028,8 +1132,10 @@ def _(mo):
     - **Post 4 — what moves matter.** Leaguewide backtest (talent→net→wins, MAE ~6 wins; misses
       are injuries). Minute-neutral sims: moves worth their talent; same-talent fit premium ≈ 0
       except rim. 2026-27 projections with version-controlled roster overrides.
-    - **Post 5 — the coach changes sides.** Mosley two-sided style test; pre-registered
-      predictions. *Pending the two-season `mart_team_style`.*
+    - **Post 5 — the coach changes sides.** Two-season `mart_team_style` (2024-25 CTG verbose
+      format parsed + harmonized); Mosley's Orlando fingerprint (persistent signature = elite
+      opponent-3PA-rate suppression, 0th/10th %ile both seasons); pre-registered predictions
+      frozen in `analysis/mosley_predictions_2027.yaml`. *Pending 2026-27 games to grade.*
 
     ### Why fit keeps coming up small (the mechanisms)
     1. **Range restriction** — coaches pre-optimize; catastrophic-role lineups never get minutes,
@@ -1049,9 +1155,9 @@ def _(mo):
     **private/local-only**). **Season codes: 2025 = 2024-25, 2026 = 2025-26.**
 
     ### Open threads (where new work goes)
-    - **Two-season `mart_team_style`** — 2024-25 CTG is a rawer format needing its own parser;
-      unlocks Post 5 (Mosley fingerprint).
-    - **Post 5 in-season tracker** — needs games; grade the frozen predictions.
+    - **Post 5 in-season tracker** — the two-season `mart_team_style` and frozen predictions
+      (`analysis/mosley_predictions_2027.yaml`) are built; this just needs 2026-27 games to grade
+      New Orleans's drift toward the fingerprint and Orlando's away from it.
     - **A 2023-24 DPM snapshot** would let us lag 2024-25 talent and fully close the same-season
       leakage question for both seasons.
     - **Opponent-style / matchup analysis** — preserved as a standalone piece (moved out of the
