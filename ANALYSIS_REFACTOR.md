@@ -53,8 +53,10 @@ out-of-fold talent baseline, and robustness batteries on the saturation and fit-
   returning-player lineups, prior-season and same-season DPM give the same result.
 - **Rim protection is the one robust fit lever.** ~+4.7 net per SD (p<.05) under naive, linear-
   calibrated, and quadratic-calibrated baselines, and +4.5/SD (p<.001) against a *prior-season*
-  talent baseline. (Caveat carried forward: `rim_suppress` is opponent rim defense, a slice of net,
-  so part of the coefficient is mechanical.)
+  talent baseline. **Survives a methodologically independent talent measure**: +3.86/SD off a
+  DPM baseline vs +3.81/SD off a **ShotQuality RAPM** baseline (corr of the two talent sums only
+  0.61), both p<.001. (Caveat carried forward: `rim_suppress` is opponent rim defense, a slice of
+  net, so part of the coefficient is mechanical.)
 - **Spacing is null at the margin** after talent (+0.5/SD, n.s.) — but see the reframe below.
 
 ## Conclusions that weakened / gained nuance
@@ -69,6 +71,13 @@ out-of-fold talent baseline, and robustness batteries on the saturation and fit-
   not ~0.95). It doesn't change the saturation or rim conclusions, but it means DPM-based talent is
   not a clean pre-season instrument. Documented, not "fixed" (only a prior-season lag exists, and
   only for 2025-26 — no 2023-24 snapshot to lag 2024-25).
+- **Talent saturation is talent-MEASURE-dependent — the important new caveat.** The concavity is
+  robust *through the DPM lens* (pooled two-season p=.001, trimmed, binned). But it does **not**
+  replicate on an independent **ShotQuality RAPM** talent axis for 2025-26 alone (quad p=.67; DPM
+  on the same single-season 561-lineup subset is only p=.07). So "diminishing returns to lineup
+  talent" is well-supported in the multi-season DPM data but not confirmed by a second, genuinely
+  independent talent measure in a single season — it may partly reflect DPM's own regressed/bounded
+  construction. Present with caution; do not state it as a hard basketball law.
 
 ## Conclusions that changed
 

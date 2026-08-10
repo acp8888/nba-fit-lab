@@ -167,6 +167,13 @@ that isn't a published mart.
   (public data, version-controlled). One row per player per side of a move; adds an `era` tag
   (`pre_star`/`post_star`) relative to the star's draft (Zion 2019-06-20 / Paolo 2022-06-23). →
   Post 1 construction timeline. NEUTRAL: `era` is timing, not inferred front-office intent.
+- **`load_shotquality()`** — ⚠️ **PRIVATE / licensed / local-only.** ShotQuality RAPM (Databallr),
+  673 players, read from `data/local/raw/databallr/` (gitignored, **never** on S3 or in git).
+  Shot-quality ridge-RAPM over a 3-year time-decay window (2023-24..2025-26) — one blended
+  per-player quality estimate, z-scored (`oSQ/dSQ/cSQ`, `oTS/dTS/cTS`), NOT points-per-100 and
+  NOT a per-season number (`year=2026` = decay-window end). Used only as an **independent talent
+  axis** for robustness cross-checks (2025-26 lineups only). **Treat like CTG data: never export
+  ShotQuality-derived values to the public WASM site or public repo.**
 
 ---
 

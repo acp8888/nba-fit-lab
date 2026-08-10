@@ -215,6 +215,50 @@ def calibrated_fit_residual(
 
 # --- Per (season, team) net rating + talent (for the pooled Analysis C) -------
 # Actual net = BBref team NRtg; talent = 5 x minutes-weighted DARKO DPM. Both seasons,
+# --- ShotQuality RAPM (Databallr) — PRIVATE, licensed, local-only ------------
+# LICENSING: Databallr/ShotQuality is proprietary. The raw CSVs live under
+# data/local/raw/databallr/ (gitignored) and are read here directly — deliberately NOT
+# published to S3 (even the private marts bucket) or any mart, so the licensed data never
+# leaves this machine. NEVER export ShotQuality-derived values to the public WASM site or the
+# public repo. Treat exactly like CTG-derived data (private), only stricter (local-only).
+#
+# WHAT IT IS: ShotQuality's shot-quality RAPM — four parallel ridge regressions over ~650k
+# possessions with a 3-YEAR time-decay window (2023-24 .. 2025-26, 700-day half-life). So it is
+# a single blended per-player quality estimate, NOT a per-season number, and the `year`=2026 in
+# the file is the decay-window END, not a season. Columns are z-scored impact metrics
+# (oSQ/dSQ/cSQ offense/defense/combined; oTS/dTS/cTS), NOT points-per-100 like DPM. Use it as an
+# INDEPENDENT talent axis for robustness cross-checks (standardize first), not a DPM replacement,
+# and only against 2025-26 lineups (applying the 2026-ending decay window to 2024-25 would leak
+# future info).
+_shotquality = None
+
+
+def load_shotquality():
+    """ShotQuality RAPM per player (combined file) + a folded 'f. last' key. PRIVATE/local-only."""
+    global _shotquality
+    if _shotquality is not None:
+        return _shotquality
+    con = connect()
+    f = (
+        Path(__file__).resolve().parent.parent
+        / "data/local/raw/databallr/2026-08-09/shotquality_combined_2026-08-10.csv"
+    )
+    if not f.exists():
+        raise FileNotFoundError(
+            f"ShotQuality raw not found at {f} (licensed/local-only; not in git or S3)."
+        )
+    _shotquality = con.execute(f"""
+        select nba_id, player_name, team_abbreviation as team,
+               oSQ, dSQ, cSQ, oTS, dTS, cTS, off_poss,
+               regexp_replace(lower(strip_accents(
+                   left(player_name,1) || '. ' ||
+                   array_to_string(list_slice(string_split(player_name,' '),2,100),' ')
+               )), '\\s+(jr\\.?|sr\\.?|ii|iii|iv)$', '') as flast,
+               regexp_replace(lower(strip_accents(player_name)), '\\s+(jr\\.?|sr\\.?|ii|iii|iv)$', '') as fold
+        from read_csv_auto('{f}')""").df()
+    return _shotquality
+
+
 # from raw (2024-25 team ratings are a separate pull). Lean by design — the CTG-rich
 # 2-season mart_team_style is a bigger remap (2024-25 CTG is a different raw format).
 _team_seasons = None
