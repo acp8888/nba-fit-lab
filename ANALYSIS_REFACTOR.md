@@ -1,8 +1,8 @@
 # Analysis refactor — implementation log
 
-Living record of the 2026 analytical refactor (the "same constraint, different paths" rebuild).
-Phases 1–3 are complete; 4–6 (series prose, Mosley, cleanup) are in progress. Findings are
-written as they lock, so the eventual Post prose is built on settled evidence.
+Record of the 2026 analytical refactor (the "same constraint, different paths" rebuild). All six
+phases are complete. Findings were written as they locked, so the Post prose is built on settled
+evidence. The five-post narrative lives in `notebooks/walkthrough.py`; the data map in `MARTS.md`.
 
 ---
 
@@ -17,7 +17,21 @@ coexist), and *realized deployment* (co-minutes actually shared) — concepts th
 conflated.
 
 **Phase 3 — statistical cleanup.** Playoff tagging, role-coverage recovery, a calibrated
-out-of-fold talent baseline, and robustness batteries on the saturation and fit-feature results.
+out-of-fold talent baseline, and robustness batteries on the saturation and fit-feature results
+(including an independent-talent-measure cross-check via private ShotQuality RAPM).
+
+**Phase 4 — series rebuild.** Full rewrite of `walkthrough.py` around the new thesis: Post 1
+(same constraint, different paths), Post 2 (minimum-viable vs marginal fit), Post 3 (why ORL
+survived / NOP collapsed — a per-season decomposition), Post 4 (honest backtest + minute-neutral
+sims). Every §34 overclaim audited and softened; the opponent-style/matchup work preserved as a
+standalone notebook rather than deleted.
+
+**Phase 5 — Mosley.** Parsed the 2024-25 CTG verbose export into a harmonized two-season
+`mart_team_style`; fingerprinted Mosley's Orlando; froze pre-registered 2026-27 predictions.
+
+**Phase 6 — sweep.** Full reproducibility rebuild (30 tables, all assertions pass), this document
+finalized, a §34/§35 overclaim + season-hygiene audit across both notebooks, and assertion-coverage
+confirmation (every mart carries 5–16 `-- ASSERT` checks).
 
 ## New data added
 
@@ -29,6 +43,12 @@ out-of-fold talent baseline, and robustness batteries on the saturation and fit-
 - `mart_games_styled`: added `is_playoff` / `game_type`.
 - `mart_lineup_features_league`: added role-coverage flags (`has_creator/has_shooter/has_rim_protector`,
   `n_shooters/n_creators/n_role_covered`).
+- `mart_team_style`: extended to **two seasons** (60 rows) by parsing the 2024-25 CTG verbose
+  export and harmonizing to the 2025-26 schema. **Private (CTG-licensed).**
+- `load_team_seasons()`: added actual `wins`/`losses` (for the backtest). `load_roster_2027()`:
+  applies `data/local/manual/roster_2027_overrides.csv`. `load_shotquality()`: **private/local-only**
+  ShotQuality RAPM for the independent-talent cross-check.
+- `analysis/mosley_predictions_2027.yaml` — pre-registered, frozen Mosley style predictions.
 
 ## Analyses rebuilt
 
@@ -42,7 +62,17 @@ out-of-fold talent baseline, and robustness batteries on the saturation and fit-
   postseason). Now tagged; a regular season is exactly 82 games/team.
 - **Calibrated talent baseline (§12).** Replaced the implicit "fit = net − ΣDPM" (which assumes a
   talent coefficient of exactly 1) with an out-of-fold (leave-one-team-out) residual from
-  `net ~ f(ΣDPM)`, linear and quadratic.
+  `net ~ f(ΣDPM)`, linear and quadratic. (Result: corr 1.00/0.99 with the naive residual — the
+  naive version wasn't distorting conclusions, and rim survives the calibrated baseline.)
+- **Projection backtest (Post 4).** Rebuilt as an honest all-league backtest (60 team-seasons,
+  two steps: talent→net, net→wins). End-to-end **MAE ~6 wins** (not "a couple"); the biggest
+  misses are injuries (PHI '25, NOP '25), so the error lives in the talent→net step — the
+  projection's own errors *are* the availability story. Roster-move sims made **minute-neutral**
+  (value = talent difference the swap creates), with version-controlled 2026-27 roster overrides.
+- **Two-season `mart_team_style` (Post 5).** The 2024-25 CTG *verbose* format (full-label columns,
+  interleaved rank columns, city short-names, `Average` row) parsed and harmonized to the 2025-26
+  schema; units verified consistent across seasons. Exposed a latent double-join bug in
+  `mart_games_styled` (now season-pinned), caught by assertions.
 
 ## Conclusions that survived
 
@@ -97,6 +127,17 @@ out-of-fold talent baseline, and robustness batteries on the saturation and fit-
   96% and a shooter in 93% of deployed lineups (unbiased sample), so catastrophic role-deficient
   lineups barely enter observation. The spacing null is a statement about the *already-functional*
   range NBA coaches deploy, not about spacing being unimportant.
+- **The ORL−NOP gap decomposes into two different seasons.** 2024-25: near-equal talent, ~9.5-net
+  outcome gap (~20+ wins) that talent doesn't explain → an availability shock. 2025-26: talent
+  explains *more* than the whole gap → NOP was simply a low-talent roster. There is no single
+  "NOP failed" story; there are two, and neither is about fit.
+- **Moves are worth their talent; the fit premium rounds to zero — except rim.** Minute-neutral
+  sims put a same-talent shooter-for-non-shooter swap at ≈ 0 extra wins; only a same-talent rim
+  protector carries a small positive residual. So "how much talent should you trade for fit?" →
+  very little, except for rim protection.
+- **Mosley's Orlando signature is defensive and persistent.** Elite opponent-3PA-rate suppression
+  (0th/10th percentile across *both* his seasons); pace is explicitly *not* a signature (3rd→60th).
+  Frozen, both-directions predictions for 2026-27 in `analysis/mosley_predictions_2027.yaml`.
 
 ## Remaining limitations
 
@@ -106,11 +147,18 @@ out-of-fold talent baseline, and robustness batteries on the saturation and fit-
   for continuity, flagged for injury interpretation.
 - DPM is integer-rounded in every snapshot; the talent baseline is coarse (consistently so).
 - Leaguewide star-season generalization (Analysis C) remains n≈20 — underpowered; presented as
-  exploratory.
+  exploratory. The ORL/NOP decomposition is a 2-team, 2-season accounting, not a causal identification.
+- The projection backtest is ~6-win MAE, so single-team win projections are ranges; preseason DPM
+  is integer-rounded and regressed.
+- Post 5 is pre-registration only — no 2026-27 games yet to grade the frozen predictions.
+- `mart_pair_synergy` is one season (2024-25); presented as supporting, not law.
 
 ## Recommended next data pull
 
-- (Cowork, in flight) ORL/NOP transaction history — **done**, validated.
-- 2024-25 CTG team-style parser → two-season `mart_team_style` (Phase 5 / Mosley).
-- Optional: a 2023-24 DARKO snapshot would let us lag 2024-25 talent and fully close the leakage
-  question for both seasons.
+- **2026-27 in-season team-style refreshes** — to grade `mosley_predictions_2027.yaml` (the one
+  live, forward-looking test left).
+- **A 2023-24 DARKO snapshot** — would let us lag 2024-25 talent and fully close the same-season
+  DPM-leakage question for *both* seasons (currently closeable only for 2025-26).
+- **Leaguewide multi-season games** — to upgrade the standalone matchup analysis beyond its
+  one-season ORL/NOP sample (with team × opponent-style interactions).
+- (Done) ORL/NOP transaction history; 2024-25 CTG team-style parser; ShotQuality RAPM cross-check.
