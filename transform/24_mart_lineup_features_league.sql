@@ -50,7 +50,7 @@ ht as (
     from stg_player_heights
 ),
 
-attr as (
+attr0 as (
     -- one row per (team, F.Last key); on collision keep the higher-minutes player
     select
         adv.team_bbref                            as team,
@@ -62,7 +62,8 @@ attr as (
         adv.three_pa_rate                         as par,
         ht.height_in,
         g.gravity,
-        st.cs_gravity
+        st.cs_gravity,
+        adv.ast_pct / nullif(adv.usg, 0)          as ast_to_usg
     from adv
     join stg_team_map tm on adv.team_bbref = tm.bbref_abbr
     left join dk on dk.fold = adv.fold and dk.team = tm.full_name
@@ -70,6 +71,17 @@ attr as (
     left join stg_ctg_gravity_league g on regexp_replace(lower(strip_accents(g.player_name)), '\s+(jr\.?|sr\.?|ii|iii|iv)$', '') = adv.fold
     left join stg_player_shot_types st on regexp_replace(lower(strip_accents(st.player_name)), '\s+(jr\.?|sr\.?|ii|iii|iv)$', '') = adv.fold and st.team = adv.team_bbref
     qualify row_number() over (partition by adv.team_bbref, adv.flast order by adv.mp desc) = 1
+),
+attr as (
+    -- discrete ROLE FLAGS, defined identically to mart_player_league but computed over the
+    -- FULL lineup-player population here (no MP>=800 cut), so role coverage resolves for ~99%
+    -- of lineup slots instead of the 67% you get by joining role flags off the rotation-only
+    -- mart. This is the §11 fix: the flags live where the trait data already is.
+    select *,
+        (percent_rank() over (order by cs_gravity) >= 0.60)                          as is_shooter,
+        (usg >= 24 or ast_to_usg >= 1.15)                                            as is_creator,
+        (percent_rank() over (order by blk_pct) >= 0.75 and height_in >= 82)         as is_rim_protector
+    from attr0
 ),
 
 lu as (
@@ -126,6 +138,15 @@ base as (
         stddev_pop(a.usg)                             as usg_spread,
         max(a.ast_pct)                                as ast_max,
 
+        -- discrete role coverage (the §11 recovery): does the lineup contain each role?
+        -- computed over covered slots; n_role_covered says how many of 5 have trait data.
+        count(a.k) filter (where a.is_shooter is not null)  as n_role_covered,
+        coalesce(bool_or(a.is_creator), false)              as has_creator,
+        coalesce(bool_or(a.is_shooter), false)              as has_shooter,
+        coalesce(bool_or(a.is_rim_protector), false)        as has_rim_protector,
+        count(a.k) filter (where a.is_shooter)              as n_shooters,
+        count(a.k) filter (where a.is_creator)              as n_creators,
+
         -- this lineup's sorted last-name key, to match PBPStats defense
         array_to_string(list_sort(list_transform(string_split(any_value(lu.lineup_key), '|'),
             t -> regexp_replace(lower(strip_accents(regexp_replace(t, '^[A-Za-z]\.\s+', ''))),
@@ -171,3 +192,12 @@ left join rim r on r.lineup_id = base.lineup_id and r.rn = 1
 -- ASSERT > 550: SELECT count(*) FROM mart_lineup_features_league WHERE rim_suppress IS NOT NULL
 -- ASSERT == 0: SELECT count(*) FROM mart_lineup_features_league WHERE opp_rim_freq NOT BETWEEN 0 AND 1
 -- ASSERT == 0: SELECT count(*) FROM mart_lineup_features_league WHERE opp_rim_acc NOT BETWEEN 0 AND 1
+-- role coverage (§11 recovery): role flags resolve for nearly every lineup (not the 413/600 you
+-- get joining off the MP>=800 rotation mart). Confirms the range-restriction finding on the FULL
+-- deployed sample: coaches almost always field a creator and a shooter.
+-- ASSERT > 560: SELECT count(*) FROM mart_lineup_features_league WHERE n_role_covered = 5
+-- ASSERT > 550: SELECT count(*) FROM mart_lineup_features_league WHERE has_creator
+-- ASSERT > 540: SELECT count(*) FROM mart_lineup_features_league WHERE has_shooter
+-- role counts in-band
+-- ASSERT == 0: SELECT count(*) FROM mart_lineup_features_league WHERE n_shooters NOT BETWEEN 0 AND 5
+-- ASSERT == 0: SELECT count(*) FROM mart_lineup_features_league WHERE n_creators NOT BETWEEN 0 AND 5
